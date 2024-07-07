@@ -1,0 +1,44 @@
+<launch>
+    <arg name="project" default="dlio_loc"/>
+    <arg name="rviz" default="true"/>
+    <param name="robot_description" textfile="$(find dlio_loc)/urdf/bunker.urdf" />
+    <!-- <node name="joint_state_publisher_gui" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" /> -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node pkg="tf2_ros" type="static_transform_publisher" name="laser_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 base_link rslidar" output = "screen"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="bunker_tf" args="0.0 0.0 -0.25 0.0 0.0 0.0 base_link bunker_link" output = "screen"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="imu_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 base_link imu_link" output = "screen"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="odom_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 map_1 odom" output = "screen"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="map_1_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 map map_1" output = "screen"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="map_2_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 map map_2" output = "screen"/>
+
+    <node name="dlio_loc" pkg="dlio_loc" type="dlio_odom_node" output="screen">
+        <!-- <remap from="livox/lidar" to="cloud"/> -->
+        <!-- <remap from="livox/imu" to="imu"/> -->
+        <remap from="cloud" to="rslidar_points"/>
+        <remap from="imu" to="imu/data"/>
+        <rosparam file="$(find dlio_loc)/param/localization.yaml" command="load"/>
+    </node>
+    <!-- <node name="cus_to_pc2" pkg="dlio_loc" type="custom_msg_to_pc2_node" output="screen"></node> -->
+    <!-- RViz -->
+    <!-- <node pkg="rviz" type="rviz" name="dlio_rviz" args="-d $(find dlio_loc)/rviz/test.rviz" if="$(arg rviz)" output = "screen"/> -->
+    <node pkg="rviz" type="rviz" name="dlio_rviz" args="-d $(find dlio_loc)/rviz/1.rviz" if="$(arg rviz)" output = "screen"/>
+
+    <!-- 指定打印输出的日志等级 -->
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find dlio_loc)/launch/include/rosconsole/rosconsole_error.conf"/>
+    
+    <!-- Parameters -->
+    <rosparam file="$(find dlio_loc)/config/paramRslidarIMU.yaml" command="load" />
+
+    <!--- LOAM -->
+    <include file="$(find dlio_loc)/launch/include/module_loam.launch" />
+
+    <!--- Robot State TF -->
+    <include file="$(find dlio_loc)/launch/include/module_robot_state_publisher.launch" />
+
+    <!--- Run Navsat -->
+    <include file="$(find dlio_loc)/launch/include/module_navsat.launch" />
+
+    <!--- Run Rviz-->
+    <!-- <include file="$(find dlio_loc)/launch/include/module_rviz.launch" /> -->
+
+</launch>
