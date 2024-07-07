@@ -513,6 +513,8 @@ public:
             publishFrames();
         }
     }
+    //@yjf
+    void syst
 
     //@yjf
     bool systemInitialize() {
@@ -565,7 +567,7 @@ public:
         publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, mapFrame);
         system_initialized = true;
         // cout << "update successful" << endl;
-        ROS_INFO("update successful");
+        ROS_INFO("initilize pose successful");
         return true;
         // if (icp.hasConverged() && icp.getFitnessScore() < 0.3) {
         //     // ROS_INFO("initialize pose sucessful");
