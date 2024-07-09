@@ -520,9 +520,9 @@ public:
     }
     //@yjf
     void systemUpdatePose() {
-        // transformTobeMapped[0] = initialize_pose[0];
-        // transformTobeMapped[1] = initialize_pose[1];
-        // transformTobeMapped[2] = initialize_pose[2];
+        transformTobeMapped[0] = initialize_pose[0];
+        transformTobeMapped[1] = initialize_pose[1];
+        transformTobeMapped[2] = initialize_pose[2];
         transformTobeMapped[3] = initialize_pose[3];
         transformTobeMapped[4] = initialize_pose[4];
         transformTobeMapped[5] = initialize_pose[5];
