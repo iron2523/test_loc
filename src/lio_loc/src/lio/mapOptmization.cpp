@@ -416,10 +416,14 @@ public:
         initialize_pose[4] = msgIn->pose.position.y;
         initialize_pose[5] = msgIn->pose.position.z;
 
-        std::cout << "dlio_loc_gicp pose: \n" << "x:" << initialize_pose[3] << "  y:" << initialize_pose[4] << "  z:" << initialize_pose[5] << "\n" 
-                  << "roll:" << initialize_pose[0] << " pitch:" << initialize_pose[1] << " yaw:" << initialize_pose[2] << std::endl;
+        // std::cout << "dlio_loc_gicp pose: \n" << "x:" << initialize_pose[3] << "  y:" << initialize_pose[4] << "  z:" << initialize_pose[5] << "\n" 
+        //           << "roll:" << initialize_pose[0] << " pitch:" << initialize_pose[1] << " yaw:" << initialize_pose[2] << std::endl;
 
         has_initialize_pose = true;
+        if (system_initialized) {
+            systemUpdatePose();
+        }
+
         // // 更新校正后的位姿
         // transformTobeMapped[0] = initialize_pose[0];
         // transformTobeMapped[1] = initialize_pose[1];
@@ -457,13 +461,14 @@ public:
         {
             timeLastProcessing = timeLaserInfoCur;
             // ROS_INFO("aaaa");
-            if (!system_initialized)
+            if (!system_initialized) {
                 if (!systemInitialize())
                     return;
-            
-            // if (has_initialize_pose) {
+            }  
+            //need to fix code
+            // if (system_initialized) {
             //     systemInitialize();
-            // } else return;
+            // } 
             // 当前帧位姿初始化
             // 1、如果是第一帧，用原始imu数据的RPY初始化当前帧位姿（旋转部分）
             // 2、后续帧，用imu里程计计算两帧之间的增量位姿变换，作用于前一帧的激光位姿，得到当前帧激光位姿
@@ -515,9 +520,9 @@ public:
     }
     //@yjf
     void systemUpdatePose() {
-        transformTobeMapped[0] = initialize_pose[0];
-        transformTobeMapped[1] = initialize_pose[1];
-        transformTobeMapped[2] = initialize_pose[2];
+        // transformTobeMapped[0] = initialize_pose[0];
+        // transformTobeMapped[1] = initialize_pose[1];
+        // transformTobeMapped[2] = initialize_pose[2];
         transformTobeMapped[3] = initialize_pose[3];
         transformTobeMapped[4] = initialize_pose[4];
         transformTobeMapped[5] = initialize_pose[5];
@@ -525,6 +530,7 @@ public:
         PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
         *cloudOut += *transformPointCloud(laserCloudSurfLast, &thisPose6D);
         publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, mapFrame);
+        incrementalOdometryAffineBack = trans2Affine3f(transformTobeMapped);
         ROS_INFO("update gicp pose successful");
     }
 
