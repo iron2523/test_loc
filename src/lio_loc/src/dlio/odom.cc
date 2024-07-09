@@ -574,7 +574,7 @@ void dlio::OdomNode::updateState() {
 
   double abias_max = this->geo_abias_max_;
   double gbias_max = this->geo_gbias_max_;
-
+  //yyyjf new callback func
   // Update accel bias
   this->state.b.accel -= dt * this->geo_Kab_ * err_body;
   this->state.b.accel = this->state.b.accel.array().min(abias_max).max(-abias_max);
@@ -593,7 +593,7 @@ void dlio::OdomNode::updateState() {
   this->state.q.y() += dt * this->geo_Kq_ * qcorr.y();
   this->state.q.z() += dt * this->geo_Kq_ * qcorr.z();
   this->state.q.normalize();
-
+  
   // @yjf
   // 发布每次地图匹配后的位姿
   geometry_msgs::PoseStamped update_pose_msg;

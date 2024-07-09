@@ -286,7 +286,7 @@ public:
         // 发布imu里程计
         pubImuOdometry = nh.advertise<nav_msgs::Odometry> (odomTopic+"_incremental", 2000);
         //@yjf
-        pubstate_info = nh.advertise<dlio_loc::state_info> (odomTopic+"_stateinfo", 2000);
+        pubstate_info = nh.advertise<dlio_loc::state_info> ("lio_sam_stateinfo", 2000);
 
         // imu预积分的噪声协方差
         boost::shared_ptr<gtsam::PreintegrationParams> p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);

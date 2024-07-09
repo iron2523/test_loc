@@ -54,7 +54,6 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::G; // GPS pose
 
-
 /**
  * 6D位姿点云结构定义
 */
@@ -1416,125 +1415,6 @@ public:
     }
 
     /**
-     * 当前激光帧角点寻找局部map匹配点
-     * 1、更新当前帧位姿，将当前帧角点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成直线（用距离中心点的协方差矩阵，特征值进行判断），则认为匹配上了
-     * 2、计算当前帧角点到直线的距离、垂线的单位向量，存储为角点参数
-    */
-    // void cornerOptimization()
-    // {
-    //     // 更新当前帧位姿
-    //     updatePointAssociateToMap();
-
-    //     // 遍历当前帧角点集合
-    //     #pragma omp parallel for num_threads(numberOfCores)
-    //     for (int i = 0; i < laserCloudCornerLastDSNum; i++)
-    //     {
-    //         PointType pointOri, pointSel, coeff;
-    //         std::vector<int> pointSearchInd;
-    //         std::vector<float> pointSearchSqDis;
-
-    //         // 角点（坐标还是lidar系）
-    //         pointOri = laserCloudCornerLastDS->points[i];
-    //         // 根据当前帧位姿，变换到世界坐标系（map系）下
-    //         pointAssociateToMap(&pointOri, &pointSel);
-    //         // 在局部角点map中查找当前角点相邻的5个角点
-    //         kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
-
-    //         cv::Mat matA1(3, 3, CV_32F, cv::Scalar::all(0));
-    //         cv::Mat matD1(1, 3, CV_32F, cv::Scalar::all(0));
-    //         cv::Mat matV1(3, 3, CV_32F, cv::Scalar::all(0));
-            
-    //         // 要求距离都小于1m
-    //         if (pointSearchSqDis[4] < 1.0) {
-    //             // 计算5个点的均值坐标，记为中心点
-    //             float cx = 0, cy = 0, cz = 0;
-    //             for (int j = 0; j < 5; j++) {
-    //                 cx += laserCloudCornerFromMapDS->points[pointSearchInd[j]].x;
-    //                 cy += laserCloudCornerFromMapDS->points[pointSearchInd[j]].y;
-    //                 cz += laserCloudCornerFromMapDS->points[pointSearchInd[j]].z;
-    //             }
-    //             cx /= 5; cy /= 5;  cz /= 5;
-
-    //             // 计算协方差
-    //             float a11 = 0, a12 = 0, a13 = 0, a22 = 0, a23 = 0, a33 = 0;
-    //             for (int j = 0; j < 5; j++) {
-    //                 // 计算点与中心点之间的距离
-    //                 float ax = laserCloudCornerFromMapDS->points[pointSearchInd[j]].x - cx;
-    //                 float ay = laserCloudCornerFromMapDS->points[pointSearchInd[j]].y - cy;
-    //                 float az = laserCloudCornerFromMapDS->points[pointSearchInd[j]].z - cz;
-
-    //                 a11 += ax * ax; a12 += ax * ay; a13 += ax * az;
-    //                 a22 += ay * ay; a23 += ay * az;
-    //                 a33 += az * az;
-    //             }
-    //             a11 /= 5; a12 /= 5; a13 /= 5; a22 /= 5; a23 /= 5; a33 /= 5;
-
-    //             // 构建协方差矩阵
-    //             matA1.at<float>(0, 0) = a11; matA1.at<float>(0, 1) = a12; matA1.at<float>(0, 2) = a13;
-    //             matA1.at<float>(1, 0) = a12; matA1.at<float>(1, 1) = a22; matA1.at<float>(1, 2) = a23;
-    //             matA1.at<float>(2, 0) = a13; matA1.at<float>(2, 1) = a23; matA1.at<float>(2, 2) = a33;
-
-    //             // 特征值分解
-    //             cv::eigen(matA1, matD1, matV1);
-
-    //             // 如果最大的特征值相比次大特征值，大很多，认为构成了线，角点是合格的
-    //             if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
-    //                 // 当前帧角点坐标（map系下）
-    //                 float x0 = pointSel.x;
-    //                 float y0 = pointSel.y;
-    //                 float z0 = pointSel.z;
-    //                 // 局部map对应中心角点，沿着特征向量（直线方向）方向，前后各取一个点
-    //                 float x1 = cx + 0.1 * matV1.at<float>(0, 0);
-    //                 float y1 = cy + 0.1 * matV1.at<float>(0, 1);
-    //                 float z1 = cz + 0.1 * matV1.at<float>(0, 2);
-    //                 float x2 = cx - 0.1 * matV1.at<float>(0, 0);
-    //                 float y2 = cy - 0.1 * matV1.at<float>(0, 1);
-    //                 float z2 = cz - 0.1 * matV1.at<float>(0, 2);
-
-    //                 // area_012，也就是三个点组成的三角形面积*2，叉积的模|axb|=a*b*sin(theta)
-    //                 float a012 = sqrt(((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1)) * ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1)) 
-    //                                 + ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1)) * ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1)) 
-    //                                 + ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1)) * ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1)));
-                    
-    //                 // line_12，底边边长
-    //                 float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*(z1 - z2));
-                    
-    //                 // 两次叉积，得到点到直线的垂线段单位向量，x分量，下面同理
-    //                 float la = ((y1 - y2)*((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1)) 
-    //                           + (z1 - z2)*((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1))) / a012 / l12;
-
-    //                 float lb = -((x1 - x2)*((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1)) 
-    //                            - (z1 - z2)*((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1))) / a012 / l12;
-
-    //                 float lc = -((x1 - x2)*((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1)) 
-    //                            + (y1 - y2)*((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1))) / a012 / l12;
-
-    //                 // 三角形的高，也就是点到直线距离
-    //                 float ld2 = a012 / l12;
-
-    //                 // 距离越大，s越小，是个距离惩罚因子（权重）
-    //                 float s = 1 - 0.9 * fabs(ld2);
-
-    //                 // 点到直线的垂线段单位向量
-    //                 coeff.x = s * la;
-    //                 coeff.y = s * lb;
-    //                 coeff.z = s * lc;
-    //                 // 点到直线距离
-    //                 coeff.intensity = s * ld2;
-
-    //                 if (s > 0.1) {
-    //                     // 当前激光帧角点，加入匹配集合中
-    //                     laserCloudOriCornerVec[i] = pointOri;
-    //                     // 角点的参数
-    //                     coeffSelCornerVec[i] = coeff;
-    //                     laserCloudOriCornerFlag[i] = true;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    /**
      * 当前激光帧平面点寻找局部map匹配点
      * 1、更新当前帧位姿，将当前帧平面点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成平面（最小二乘拟合平面），则认为匹配上了
      * 2、计算当前帧平面点到平面的距离、垂线的单位向量，存储为平面点参数
@@ -1704,20 +1584,7 @@ public:
             coeff.y = coeffSel->points[i].y;
             coeff.z = coeffSel->points[i].z;
             coeff.intensity = coeffSel->points[i].intensity;
-            // in camera
-            // float arx = (crx*sry*srz*pointOri.x + crx*crz*sry*pointOri.y - srx*sry*pointOri.z) * coeff.x
-            //           + (-srx*srz*pointOri.x - crz*srx*pointOri.y - crx*pointOri.z) * coeff.y
-            //           + (crx*cry*srz*pointOri.x + crx*cry*crz*pointOri.y - cry*srx*pointOri.z) * coeff.z;
 
-            // float ary = ((cry*srx*srz - crz*sry)*pointOri.x 
-            //           + (sry*srz + cry*crz*srx)*pointOri.y + crx*cry*pointOri.z) * coeff.x
-            //           + ((-cry*crz - srx*sry*srz)*pointOri.x 
-            //           + (cry*srz - crz*srx*sry)*pointOri.y - crx*sry*pointOri.z) * coeff.z;
-
-            // float arz = ((crz*srx*sry - cry*srz)*pointOri.x + (-cry*crz-srx*sry*srz)*pointOri.y)*coeff.x
-            //           + (crx*crz*pointOri.x - crx*srz*pointOri.y) * coeff.y
-            //           + ((sry*srz + cry*crz*srx)*pointOri.x + (crz*sry-cry*srx*srz)*pointOri.y)*coeff.z;
-            // lidar -> camera
             float arx = (-srx * cry * pointOri.x - (srx * sry * srz + crx * crz) * pointOri.y + (crx * srz - srx * sry * crz) * pointOri.z) * coeff.x
                       + (crx * cry * pointOri.x - (srx * crz - crx * sry * srz) * pointOri.y + (crx * sry * crz + srx * srz) * pointOri.z) * coeff.y;
 
