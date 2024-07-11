@@ -133,57 +133,87 @@ void dlio::OdomNode::odomReceived(nav_msgs::Odometry::ConstPtr msg) {
     corrent_pose_stamped_.pose.pose.orientation = quat_msg;
 }
 
-void dlio::OdomNode::lioReceived(dlio_loc::state_info::ConstPtr lio_state) {
+void dlio::OdomNode::lioReceived(nav_msgs::Odometry odometry) {
     // 接收位置信息
-    this->state.p[0] = lio_state->pose.pose.position.x;
-    this->state.p[1] = lio_state->pose.pose.position.y;
-    this->state.p[2] = lio_state->pose.pose.position.z;
+    std::lock_guard<std::mutex> lock(this->geo.mtx);
+    // Eigen::Vector3f pin(odometry.pose.pose.position.x, odometry.pose.pose.position.y, odometry.pose.pose.position.z);
+    // Eigen::Quaternionf qin(odometry.pose.pose.orientation.w, odometry.pose.pose.orientation.x, odometry.pose.pose.orientation.y, odometry.pose.pose.orientation.z);
+    // double dt = 0.01;
+
+    // Eigen::Quaternionf qe, qhat, qcorr;
+    // qhat = this->state.q;
+
+    // // Constuct error quaternion
+    // qe = qhat.conjugate() * qin;
+
+    // double sgn = 1.;
+    // if (qe.w() < 0) {
+    //   sgn = -1;
+    // }
+
+    // // Construct quaternion correction
+    // qcorr.w() = 1 - abs(qe.w());
+    // qcorr.vec() = sgn * qe.vec();
+    // qcorr = qhat * qcorr;
+
+    // Eigen::Vector3f err = pin - this->state.p;
+    // Eigen::Vector3f err_body;
+
+    // err_body = qhat.conjugate()._transformVector(err);
+
+    // double abias_max = this->geo_abias_max_;
+    // double gbias_max = this->geo_gbias_max_;
+    // //yyyjf new callback func
+    // // Update accel bias
+    // this->state.b.accel -= dt * this->geo_Kab_ * err_body;
+    // this->state.b.accel = this->state.b.accel.array().min(abias_max).max(-abias_max);
+
+    // // Update gyro bias
+    // this->state.b.gyro[0] -= dt * this->geo_Kgb_ * qe.w() * qe.x();
+    // this->state.b.gyro[1] -= dt * this->geo_Kgb_ * qe.w() * qe.y();
+    // this->state.b.gyro[2] -= dt * this->geo_Kgb_ * qe.w() * qe.z();
+    // this->state.b.gyro = this->state.b.gyro.array().min(gbias_max).max(-gbias_max);
+
+    // // Update state
+    // this->state.p += dt * this->geo_Kp_ * err;
+    // this->state.v.lin.w += dt * this->geo_Kv_ * err;
+    // this->state.q.w() += dt * this->geo_Kq_ * qcorr.w();
+    // this->state.q.x() += dt * this->geo_Kq_ * qcorr.x();
+    // this->state.q.y() += dt * this->geo_Kq_ * qcorr.y();
+    // this->state.q.z() += dt * this->geo_Kq_ * qcorr.z();
+    // this->state.q.normalize();
+
+
+
+    this->state.p[0] = odometry.pose.pose.position.x;
+    this->state.p[1] = odometry.pose.pose.position.y;
+    this->state.p[2] = odometry.pose.pose.position.z;
     
     // 接收方向信息
-    this->state.q.w() = lio_state->pose.pose.orientation.w;
-    this->state.q.x() = lio_state->pose.pose.orientation.x;
-    this->state.q.y() = lio_state->pose.pose.orientation.y;
-    this->state.q.z() = lio_state->pose.pose.orientation.z;
+    this->state.q.w() = odometry.pose.pose.orientation.w;
+    this->state.q.x() = odometry.pose.pose.orientation.x;
+    this->state.q.y() = odometry.pose.pose.orientation.y;
+    this->state.q.z() = odometry.pose.pose.orientation.z;
+    this->state.q.normalize();
     
     // 接收线速度信息
-    this->state.v.lin.w[0] = lio_state->velocity.linear.x;
-    this->state.v.lin.w[1] = lio_state->velocity.linear.y;
-    this->state.v.lin.w[2] = lio_state->velocity.linear.z;
+    this->state.v.lin.w[0] = odometry.twist.twist.linear.x;
+    this->state.v.lin.w[1] = odometry.twist.twist.linear.y;
+    this->state.v.lin.w[2] = odometry.twist.twist.linear.z;
+    
+
     
     // 接收IMU偏置信息
-    this->state.b.gyro[0] = lio_state->gyro_bias.x;
-    this->state.b.gyro[1] = lio_state->gyro_bias.y;
-    this->state.b.gyro[2] = lio_state->gyro_bias.z;
+    // this->state.b.gyro[0] = lio_state->gyro_bias.x;
+    // this->state.b.gyro[1] = lio_state->gyro_bias.y;
+    // this->state.b.gyro[2] = lio_state->gyro_bias.z;
     
-    this->state.b.accel[0] = lio_state->accel_bias.x;
-    this->state.b.accel[1] = lio_state->accel_bias.y;
-    this->state.b.accel[2] = lio_state->accel_bias.z;
-
-    // this->state.v.ang.
-//     this->state.p[0] +=
-//     this->state.v.lin.w[0] * dt + 0.5 * dt * dt * world_accel[0];
-//   this->state.p[1] +=
-//       this->state.v.lin.w[1] * dt + 0.5 * dt * dt * world_accel[1];
-//   this->state.p[2] += this->state.v.lin.w[2] * dt +
-//                       0.5 * dt * dt * (world_accel[2] - this->gravity_);
-//   // ROS_INFO("px, py, pz, dt in propagateState:[%.8f,%.8f,%.8f,%.8f]", 
-//   // this->state.p[0], this->state.p[1], this->state.p[2], dt);
-//   this->state.v.lin.w[0] += world_accel[0] * dt;
-//   this->state.v.lin.w[1] += world_accel[1] * dt;
-//   this->state.v.lin.w[2] += (world_accel[2] - this->gravity_) * dt;
-//   this->state.v.lin.b = this->state.q.toRotationMatrix().inverse() * this->state.v.lin.w;
-//   // Gyro propogation
-//   omega.w() = 0;
-//   omega.vec() = this->imu_meas.ang_vel;
-//   Eigen::Quaternionf tmp = qhat * omega;
-//   this->state.q.w() += 0.5 * dt * tmp.w();
-//   this->state.q.vec() += 0.5 * dt * tmp.vec();
-
-//   // Ensure quaternion is properly normalized
-//   this->state.q.normalize();
-
-//   this->state.v.ang.b = this->imu_meas.ang_vel;
-//   this->state.v.ang.w = this->state.q.toRotationMatrix() * this->state.v.ang.b;
+    // this->state.b.accel[0] = lio_state->accel_bias.x;
+    // this->state.b.accel[1] = lio_state->accel_bias.y;
+    // this->state.b.accel[2] = lio_state->accel_bias.z;
+    this->geo.prev_p = this->state.p;
+    this->geo.prev_q = this->state.q;
+    this->geo.prev_vel = this->state.v.lin.w;
 }
 
 void dlio::OdomNode::imuReceived(sensor_msgs::Imu::ConstPtr msg) {

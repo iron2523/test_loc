@@ -177,6 +177,8 @@ public:
         laserOdometry.pose.pose.position.z = z;
         laserOdometry.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
         pubImuOdometry.publish(laserOdometry);
+
+
         // 发布tf，当前时刻odom与baselink系变换关系
         static tf::TransformBroadcaster tfOdom2BaseLink;
         tf::Transform tCur;
@@ -506,21 +508,21 @@ public:
         // gtsam陀螺仪
         gtsam::Vector3 gyroBias = prevBias_.gyroscope();
         // 将gtsam的位置信息转换为geometry_msgs的位置消息
-        state_info.pose.pose.position.x = prevPose_.translation().x();
-        state_info.pose.pose.position.y = prevPose_.translation().y();
-        state_info.pose.pose.position.z = prevPose_.translation().z();
+        state_info.pose.pose.position.x = prevState_.position().x();
+        state_info.pose.pose.position.y = prevState_.position().y();
+        state_info.pose.pose.position.z = prevState_.position().z();
 
         // 将gtsam的方向转为四元数
-        gtsam::Quaternion quat = prevPose_.rotation().toQuaternion();
-        state_info.pose.pose.orientation.w = quat.w();
-        state_info.pose.pose.orientation.x = quat.x();
-        state_info.pose.pose.orientation.y = quat.y();
-        state_info.pose.pose.orientation.z = quat.z();
+        // gtsam::Quaternion quat = prevPose_.rotation().toQuaternion();
+        state_info.pose.pose.orientation.w = prevState_.quaternion().w();
+        state_info.pose.pose.orientation.x = prevState_.quaternion().x();
+        state_info.pose.pose.orientation.y = prevState_.quaternion().y();
+        state_info.pose.pose.orientation.z = prevState_.quaternion().z();
 
         // 将gtsam的速度转为geometry_msgs的消息
-        state_info.velocity.linear.x = prevVel_(0);
-        state_info.velocity.linear.y = prevVel_(1);
-        state_info.velocity.linear.z = prevVel_(2);
+        state_info.velocity.linear.x = prevState_.velocity().x();
+        state_info.velocity.linear.y = prevState_.velocity().y();
+        state_info.velocity.linear.z = prevState_.velocity().z();
 
         // 将gtsam的IMU转为geometry_msgs的消息
         state_info.accel_bias.x = accelBias(0);

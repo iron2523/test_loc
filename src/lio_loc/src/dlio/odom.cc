@@ -235,9 +235,8 @@ void dlio::OdomNode::createSubscribers() {
   map_sub_ = this->nh.subscribe("map", 1, &dlio::OdomNode::mapReceived, this);
   odom_sub_ = this->nh.subscribe("odom", 1, &dlio::OdomNode::odomReceived, this);
   // yyy
-  // lio_state_sub_ = this->nh.subscribe("lio_sam_stateinfo", 10, &dlio::OdomNode::lioReceived, this);
+  lio_state_sub_ = this->nh.subscribe("odometry/imu", 1, &dlio::OdomNode::lioReceived, this);
   // livox_sub_ = this->nh.subscribe<livox_ros_driver::CustomMsg>("cloud", 1, boost::bind(&dlio::OdomNode::moveFromCustomMsgCallback, this, _1));
-
 
   // 有话题就会执行 cloudReceived回调函数
   // cloud_sub_ = this->nh.subscribe("cloud", 1, &dlio::OdomNode::cloudReceived, this);
@@ -247,7 +246,7 @@ void dlio::OdomNode::createSubscribers() {
   // 设置定时器，调用一次timerCallback函数
   cloud_data_sub_ = this->nh.subscribe("cloud", 1, &dlio::OdomNode::cloudData, this);
   // 1s效果还比较好，设置为每帧都地图匹配效果很差，0.5也还可以
-  cloud_timer_ = this->nh.createWallTimer(ros::WallDuration(1), &dlio::OdomNode::timerCallbackCloud, this);
+  cloud_timer_ = this->nh.createWallTimer(ros::WallDuration(1.5), &dlio::OdomNode::timerCallbackCloud, this);
 
   
 }

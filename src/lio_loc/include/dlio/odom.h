@@ -100,7 +100,7 @@ private:
   void propagateState();
 
   void imuReceived(sensor_msgs::Imu::ConstPtr msg);
-  void lioReceived(dlio_loc::state_info::ConstPtr lio_state);
+  void lioReceived(nav_msgs::Odometry odometry);
   void getScanFromROS(sensor_msgs::PointCloud2ConstPtr msg);
   void deskewPointcloud();
   void setInputSource();
