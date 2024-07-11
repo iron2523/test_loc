@@ -100,7 +100,7 @@ private:
   void propagateState();
 
   void imuReceived(sensor_msgs::Imu::ConstPtr msg);
-  void lioReceived(dlio_loc::state_info::ConstPtr state);
+  void lioReceived(dlio_loc::state_info::ConstPtr lio_state);
   void getScanFromROS(sensor_msgs::PointCloud2ConstPtr msg);
   void deskewPointcloud();
   void setInputSource();
@@ -156,7 +156,7 @@ private:
   ros::Subscriber cloud_sub_;
   ros::Subscriber cloud_data_sub_;
   ros::Subscriber imu_sub_;
-  ros::Subscriber livox_sub_;
+  ros::Subscriber lio_state_sub_;
 
   // Publishers
   ros::Publisher pose_pub_;

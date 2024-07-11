@@ -234,7 +234,8 @@ void dlio::OdomNode::createSubscribers() {
   initial_pose_sub_ = this->mt_nh.subscribe("initialpose", 1, &dlio::OdomNode::initialPoseReceived, this);
   map_sub_ = this->nh.subscribe("map", 1, &dlio::OdomNode::mapReceived, this);
   odom_sub_ = this->nh.subscribe("odom", 1, &dlio::OdomNode::odomReceived, this);
-
+  // yyy
+  // lio_state_sub_ = this->nh.subscribe("lio_sam_stateinfo", 10, &dlio::OdomNode::lioReceived, this);
   // livox_sub_ = this->nh.subscribe<livox_ros_driver::CustomMsg>("cloud", 1, boost::bind(&dlio::OdomNode::moveFromCustomMsgCallback, this, _1));
 
 
