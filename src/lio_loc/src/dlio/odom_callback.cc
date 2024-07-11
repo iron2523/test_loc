@@ -150,11 +150,6 @@ void dlio::OdomNode::lioReceived(dlio_loc::state_info::ConstPtr lio_state) {
     this->state.v.lin.w[1] = lio_state->velocity.linear.y;
     this->state.v.lin.w[2] = lio_state->velocity.linear.z;
     
-    // 接收角速度信息
-    // this->state.v.ang.w[0] = lio_state->velocity.angular.x;
-    // this->state.v.ang.w[1] = lio_state->velocity.angular.y;
-    // this->state.v.ang.w[2] = lio_state->velocity.angular.z;
-    
     // 接收IMU偏置信息
     this->state.b.gyro[0] = lio_state->gyro_bias.x;
     this->state.b.gyro[1] = lio_state->gyro_bias.y;

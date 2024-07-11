@@ -267,7 +267,7 @@ void dlio::OdomNode::initializePubSub() {
   this->publish_timer_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishInitialMap, this), true);
   this->publish_full_map_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishFullMap, this), true);
   // this->publish_gicp_pose_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishGicpPose, this));
-  this->publish_gicp_pose_ = mt_nh.createWallTimer(ros::WallDuration(12), std::bind(&dlio::OdomNode::publishGicpPose, this), true);
+  // this->publish_gicp_pose_ = mt_nh.createWallTimer(ros::WallDuration(12), std::bind(&dlio::OdomNode::publishGicpPose, this), true);
 
   // publish_timer_ = nh.createTimer(ros::Duration(0.02), &OdomNode::publishPoseThread, this);
 }
