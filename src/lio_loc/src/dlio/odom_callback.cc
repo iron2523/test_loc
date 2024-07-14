@@ -11,21 +11,17 @@ void dlio::OdomNode::initialPoseReceived(geometry_msgs::PoseWithCovarianceStampe
     initialpose_recieved_ = true;
     geometry_msgs::PoseWithCovarianceStamped msg_pose = *msg;
     pose_pub_.publish(msg_pose);
-
     Eigen::Quaternionf q_init(
         msg_pose.pose.pose.orientation.w, 
         msg_pose.pose.pose.orientation.x, 
         msg_pose.pose.pose.orientation.y, 
         msg_pose.pose.pose.orientation.z);
     q_init.normalize();
-
     this->T_init.setIdentity();
     this->T_init.block<3, 3>(0, 0) = q_init.toRotationMatrix();
     this->T_init.block<3, 1>(0, 3) = Eigen::Vector3f(
         msg_pose.pose.pose.position.x, msg_pose.pose.pose.position.y,
         msg_pose.pose.pose.position.z);
-    // pose_pub_->publish(corrent_pose_stamped_);
-    
     this->first_valid_scan = false;
     //让激光的回调去执行首祯配准 直接将当前的定位结果改成这个初始位姿
     this->T = this->T_init;
@@ -33,21 +29,17 @@ void dlio::OdomNode::initialPoseReceived(geometry_msgs::PoseWithCovarianceStampe
     this->geo.mtx.lock();
     this->lidarPose.q = Eigen::Quaternionf(this->T_init.block<3, 3>(0, 0));
     this->lidarPose.p = Eigen::Vector3f(this->T_init.block<3, 1>(0, 3));
-    // this->lidarPose = this->T_init;
-    //如何清空geo的状态？
     this->geo.first_opt_done = false;
     //状态重传播
     this->state.q = lidarPose.q;
     this->state.p = lidarPose.p;
     this->state.q.normalize();
-    // this->state.p.v = lidarPose.p;
     this->state.v.lin.b = Eigen::Vector3f(0., 0., 0.);
     this->state.v.lin.w = Eigen::Vector3f(0., 0., 0.);
     this->state.v.ang.b = Eigen::Vector3f(0., 0., 0.);
     this->state.v.ang.w = Eigen::Vector3f(0., 0., 0.);
     this->geo.mtx.unlock();
     //速度和角速度也要乘坐标变换吧？
-    // this->state.v = this->state
     this->resetImu();
 }
 
@@ -92,10 +84,7 @@ void dlio::OdomNode::odomReceived(nav_msgs::Odometry::ConstPtr msg) {
         Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
         Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
         Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
-    
-    // geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(quat_eig);
     geometry_msgs::Quaternion quat_msg = tf2::toMsg(quat_eig);
-  
     Eigen::Vector3d odom{msg->twist.twist.linear.x, msg->twist.twist.linear.y,
                          msg->twist.twist.linear.z};
   
