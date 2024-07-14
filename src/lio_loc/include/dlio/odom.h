@@ -35,9 +35,7 @@
 
 #include <geometry_msgs/Pose2D.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-// livox
-// #include "livox_ros_driver/CustomMsg.h"
+#include <omp.h>
 
 #include "threadpool/hasync.h"
 
@@ -372,7 +370,6 @@ private:
   Extrinsics extrinsics;
 
   // Timestamps
-  // std::mutex mtx_stamp;
   ros::Time scan_header_stamp;
   double scan_stamp;
   double prev_scan_stamp;
@@ -384,11 +381,9 @@ private:
   double first_scan_stamp;
   double elapsed_time;
   geometry_msgs::Pose2D last_save_pose;
-  // geometry_msgs::msg::Pose2D last_save_pose;
   ros::Time last_save_stamp;
   // GICP
   nano_gicp::NanoGICP<PointType, PointType> gicp;
-  // nano_gicp::NanoGICP<PointType, PointType> gicp_temp;
 
   SensorType sensor;
 

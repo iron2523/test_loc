@@ -4,7 +4,6 @@
 // loc
 #define PCL_NO_PRECOMPILE 
 
-
 #include <ros/ros.h>
 
 #include <std_msgs/Header.h>
@@ -23,8 +22,6 @@
 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-
-
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -140,11 +137,6 @@ public:
     float surroundingKeyframeMapLeafSize;
     float loopClosureICPSurfLeafSize;
 
-
-
-
-
-
     float z_tollerance; 
     float rotation_tollerance;
 
@@ -176,8 +168,6 @@ public:
     {
         nh.param<std::string>("/robot_id", robot_id, "roboat");
 
-        // 从param server中读取key为"lio_sam/pointCloudTopic"对应的参数，存pointCloudTopic，第三个参数是默认值
-        // launch文件中定义<rosparam file="$(find lio_sam)/config/params.yaml" command="load" />，从yaml文件加载参数
         nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
         nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
         nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
@@ -231,13 +221,6 @@ public:
         extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
         extQRPY = Eigen::Quaterniond(extRPY).inverse();
 
-        // nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
-        // nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
-        // nh.param<int>("lio_sam/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
-        // nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
-
-        // nh.param<float>("lio_sam/odometrySurfLeafSize", odometrySurfLeafSize, 0.2);
-        // nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
         nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
         // loc
         nh.param<float>("lio_sam/surroundingKeyframeMapLeafSize", surroundingKeyframeMapLeafSize, 0.2);
@@ -247,7 +230,6 @@ public:
 
         nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
         nh.param<double>("lio_sam/mappingProcessInterval", mappingProcessInterval, 0.15);
-
 
         nh.param<float>("liorf_localization/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
         nh.param<float>("liorf_localization/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
@@ -369,21 +351,5 @@ void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *ros
     *rosPitch = imuPitch;
     *rosYaw = imuYaw;
 }
-
-/**
- * 点到坐标系原点距离
-*/
-// float pointDistance(PointType p)
-// {
-//     return sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
-// }
-
-/**
- * 两点之间距离
-*/
-// float pointDistance(PointType p1, PointType p2)
-// {
-//     return sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) + (p1.z-p2.z)*(p1.z-p2.z));
-// }
 
 #endif

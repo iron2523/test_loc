@@ -226,7 +226,6 @@ void dlio::OdomNode::declare_frame_param() {
     base_frame_id_ = "base_link";
     declare_param(&nh, "frames_baselink", base_frame_id_, base_frame_id_);
     laser_frame_id_ = "rslidar";
-    // laser_frame_id_ = "livox_frame";
     declare_param(&nh, "frames_lidar", laser_frame_id_, laser_frame_id_);
     imu_frame_id_ = "imu_link";
     declare_param(&nh, "frames_imu", imu_frame_id_, imu_frame_id_);

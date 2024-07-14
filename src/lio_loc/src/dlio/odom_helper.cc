@@ -1,13 +1,10 @@
 #include "dlio/odom.h"
 
 sensor_msgs::Imu::Ptr dlio::OdomNode::transformImu(const sensor_msgs::Imu::ConstPtr& imu_raw) {
-    // auto imu = std::make_shared<sensor_msgs::msg::Imu>();
-    // auto imu = std::make_shared<sensor_msgs::Imu>();
     sensor_msgs::Imu::Ptr imu (new sensor_msgs::Imu);
     // Copy header
     imu->header = imu_raw->header;
   
-    //double imu_stamp_secs = rclcpp::Time(imu->header.stamp).seconds();
     double imu_stamp_secs = imu->header.stamp.toSec();
     static double prev_stamp = imu_stamp_secs;
     double dt = imu_stamp_secs - prev_stamp;
@@ -17,8 +14,6 @@ sensor_msgs::Imu::Ptr dlio::OdomNode::transformImu(const sensor_msgs::Imu::Const
         dt = 1.0 / 200.0;
     }
   
-    // Transform angular velocity (will be the same on a rigid body, so just
-    // rotate to ROS convention)
     Eigen::Vector3f ang_vel(imu_raw->angular_velocity.x,
                             imu_raw->angular_velocity.y,
                             imu_raw->angular_velocity.z);
@@ -68,8 +63,6 @@ bool dlio::OdomNode::imuMeasFromTimeRange(
         });
     }
   
-    // std::cout << "finish wait" << std::endl;
-  
     auto imu_it = this->imu_buffer.begin();
   
     auto last_imu_it = imu_it;
@@ -96,33 +89,24 @@ bool dlio::OdomNode::imuMeasFromTimeRange(
 }
 
 void dlio::OdomNode::getScanFromROS(sensor_msgs::PointCloud2ConstPtr pc) {
-    // ROS_INFO("1");
     pcl::PointCloud<PointType>::Ptr original_scan_ =
     pcl::make_shared<pcl::PointCloud<PointType>>();
-    // ROS_INFO("2");
-
     pcl::fromROSMsg(*pc, *original_scan_);
     // Remove NaNs
 
     std::vector<int> idx;
     original_scan_->is_dense = false;
-    // ROS_INFO("3");
 
     pcl::removeNaNFromPointCloud(*original_scan_, *original_scan_, idx);
-    // ROS_INFO("4");
 
     // Crop Box Filter
     this->crop.setInputCloud(original_scan_);
-    // ROS_INFO("5");
 
     this->crop.filter(*original_scan_);
-
     // automatically detect sensor type
-    // ROS_INFO("6");
 
     this->sensor = SensorType::UNKNOWN;
     for (auto& field : pc->fields) {
-        // ROS_INFO("%s", field.name.c_str());
         if (field.name == "t") {
             this->sensor = SensorType::OUSTER;
             break;
@@ -131,8 +115,6 @@ void dlio::OdomNode::getScanFromROS(sensor_msgs::PointCloud2ConstPtr pc) {
             break;
         } else if (field.name == "timestamp") {
             this->sensor = SensorType::HESAI;
-            // std::cout << "HESAI" << std::endl;
-            // ROS_INFO("hesai");
             break;
         } 
     }
@@ -243,7 +225,6 @@ std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>>
     Eigen::Vector3f v_init, // 初始速度
     const std::vector<double>& sorted_timestamps) {
 
-    // std::cout << "enter integrateImu..." << std::endl;
     // 初始化一个空的变换矩阵向量，用于存储计算结果
     const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>>
         empty;
@@ -251,7 +232,6 @@ std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>>
     // 检查输入的时间戳序列是否为空，或开始时间是否超出范围，若是，则返回空向量
     if (sorted_timestamps.empty() || start_time > sorted_timestamps.front()) {
         // invalid input, return empty vector
-        // std::cout << "invalid input" << std::endl;
         ROS_INFO("invalid input, prev scan time: %.8f, point time.front: %.8f",
             start_time, sorted_timestamps.front());
         return empty;
@@ -268,14 +248,10 @@ std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>>
         return empty;
     }
 
-    // std::cout << "aft ImuMeas..." << std::endl;
     // Backwards integration to find pose at first IMU sample
     // 反向积分以找到第一个IMU样本的位姿
     const ImuMeas& f1 = *begin_imu_it;
     const ImuMeas& f2 = *(begin_imu_it + 1);
-
-    // std::cout << "first imu" << f1.lin_accel << std::endl;
-    // std::cout << "second imu" << f2.lin_accel << std::endl;
 
     // Time between first two IMU samples
     // 计算第一对IMU样本之间的时间差
@@ -353,23 +329,15 @@ std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>>
     // Jerk between first two IMU samples
     Eigen::Vector3f j = (a2 - a1) / dt;
 
-    // Set v_init to velocity at first IMU sample (go backwards from start_time)
     v_init -= a1 * idt + 0.5 * j * idt * idt;
 
-    // std::cout << "v_init" << v_init << std::endl;
-
-    // Set p_init to position at first IMU sample (go backwards from start_time)
     // 根据线加速度和加速度变化率更新初始位置
     p_init -=
         v_init * idt + 0.5 * a1 * idt * idt + (1 / 6.) * j * idt * idt * idt;
-    // std::cout << "p_init" << v_init << std::endl;
 
-    // std::cout << "bf integrateImuInternal" << std::endl;
     // 调用内部函数，继续进行IMU数据的积分处理，返回每个时间戳对应的位姿变换矩阵
     return this->integrateImuInternal(q_init, p_init, v_init, sorted_timestamps,
                                     begin_imu_it, end_imu_it);
-
-
 }
 
 void dlio::OdomNode::pointTimeCallback(
@@ -411,11 +379,6 @@ void dlio::OdomNode::pointTimeCallback(
             return p1.value().timestamp != p2.value().timestamp;
         };
         extract_point_time = [&](boost::range::index_value<PointType&, long> pt) {
-        // return pt.value().timestamp;
-        // std::cout << std::setprecision(18) << pt.value().timestamp * 1e-9f
-        // << std::endl;
-        // livox_mid360's offset timestamp unit is microseconds...
-        // so please multiply it with 1000000000(but not 1e-9f)
         // return pt.value().timestamp / 1000000000;
         return pt.value().timestamp;
       };

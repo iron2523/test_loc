@@ -1,14 +1,9 @@
 <launch>
-
     <arg name="project" default="dlio_loc"/>
-    
     <!-- Parameters -->
     <rosparam file="$(find dlio_loc)/config/paramRslidarIMU.yaml" command="load" />
-
     <!--- LOAM -->
     <include file="$(find dlio_loc)/launch/include/module_loam.launch" />
-
     <!--- Run Rviz-->
     <include file="$(find dlio_loc)/launch/include/module_rviz.launch" />
-
 </launch>

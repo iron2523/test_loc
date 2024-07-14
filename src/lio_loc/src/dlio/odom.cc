@@ -1,8 +1,5 @@
 #include "dlio/odom.h"
 
-// dlio::OdomNode::OdomNode(ros::NodeHandle node_handle, ros::NodeHandle mt_node_handle) : nh(node_handle), mt_nh(mt_node_handle) {
-//   this->initialization();
-// }
 dlio::OdomNode::OdomNode(ros::NodeHandle node_handle, ros::NodeHandle mt_node_handle)
 {
   this->nh = node_handle;
@@ -132,39 +129,28 @@ void dlio::OdomNode::loadMap() {
   this->gicp.registerInputTarget(this->global_map_);
   ROS_INFO("***************map size: %lu  *************\n",
               global_map_->size());
-  // sensor_msgs::PointCloud2Ptr map_msg_ptr(new sensor_msgs::PointCloud2);
   this->map_msg_ptr.reset(new sensor_msgs::PointCloud2());
   pcl::toROSMsg(*global_map_, *map_msg_ptr);
   map_msg_ptr->header.frame_id = this->global_frame_id_;
 
   this->initial_map_pub_.publish(*map_msg_ptr);
-  // initial_map_pub_->publish(*map_msg_ptr);
   ROS_INFO("Initil Map Published");
 
   map_recieved_ = true;
 }
 
 void dlio::OdomNode::loadFullMap() {
-  // this->global_map_ =
-  //   pcl::PointCloud<PointType>::Ptr(new pcl::PointCloud<PointType>());
-  //   pcl::io::loadPCDFile(map_path_, *global_map_);
-
   this->full_map_ = pcl::PointCloud<PointType>::Ptr(new pcl::PointCloud<PointType>());
   pcl::io::loadPCDFile(full_map_path_, *full_map_);
-  // this->gicp.setInputTarget(this->global_map_);
-  // this->global_map_cov = this->gicp.getTargetCovariances();
-  // this->gicp.registerInputTarget(this->global_map_);
+
   ROS_INFO("***************map size: %lu  *************\n",
               full_map_->size());
-  // sensor_msgs::PointCloud2Ptr map_msg_ptr(new sensor_msgs::PointCloud2);
   this->full_map_msg_ptr.reset(new sensor_msgs::PointCloud2());
   pcl::toROSMsg(*full_map_, *full_map_msg_ptr);
   full_map_msg_ptr->header.frame_id = this->full_global_frame_id_;
 
   this->initial_full_map_pub_.publish(*full_map_msg_ptr);
-  // initial_map_pub_->publish(*map_msg_ptr);
   ROS_INFO("Initil FullMap Published");
-  // map_recieved_ = true;
 }
 
 
@@ -212,41 +198,30 @@ void dlio::OdomNode::savePoseToServer(const geometry_msgs::Pose2D& pose) {
     }
     std::ofstream(init_pose_path_) << e.c_str();
     last_save_pose = pose;
-    // last_save_stamp = get_clock()->now();
     last_save_stamp = ros::Time::now();
   }
 }
 
 void dlio::OdomNode::createPublishers() {
   pose_pub_ = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("pcl_pose", 1);
-  // pose_pub_ = create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("pcl_pose", 1);
-  // path_pub_ = create_publisher<nav_msgs::msg::Path>("path", 1);
   initial_map_pub_ = nh.advertise<sensor_msgs::PointCloud2>("initial_map", true);
   initial_full_map_pub_ = nh.advertise<sensor_msgs::PointCloud2>("initial_full_map", true);
   gicp_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("gicp_pose", 10, true);
-  // this->publish_timer = mt_nh.createWallTimer(ros::WallDuration(0.02), std::bind(&dlio::OdomNode::publishPoseThread, this));
-
 }
 
 void dlio::OdomNode::createSubscribers() {
-  // this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  // auto lidar_sub_ = ros::Subscriber();
   initial_pose_sub_ = this->mt_nh.subscribe("initialpose", 1, &dlio::OdomNode::initialPoseReceived, this);
   map_sub_ = this->nh.subscribe("map", 1, &dlio::OdomNode::mapReceived, this);
   odom_sub_ = this->nh.subscribe("odom", 1, &dlio::OdomNode::odomReceived, this);
-  // yyy
   lio_state_sub_ = this->nh.subscribe("odometry/imu", 1, &dlio::OdomNode::lioReceived, this);
-  // livox_sub_ = this->nh.subscribe<livox_ros_driver::CustomMsg>("cloud", 1, boost::bind(&dlio::OdomNode::moveFromCustomMsgCallback, this, _1));
 
   // 有话题就会执行 cloudReceived回调函数
-  // cloud_sub_ = this->nh.subscribe("cloud", 1, &dlio::OdomNode::cloudReceived, this);
   imu_sub_ = this->nh.subscribe("imu", 1, &dlio::OdomNode::imuReceived, this);
-
 
   // 设置定时器，调用一次timerCallback函数
   cloud_data_sub_ = this->nh.subscribe("cloud", 1, &dlio::OdomNode::cloudData, this);
   // 1s效果还比较好，设置为每帧都地图匹配效果很差，0.5也还可以
-  cloud_timer_ = this->nh.createWallTimer(ros::WallDuration(1.5), &dlio::OdomNode::timerCallbackCloud, this);
+  cloud_timer_ = this->nh.createWallTimer(ros::WallDuration(1), &dlio::OdomNode::timerCallbackCloud, this);
 
   
 }
@@ -255,20 +230,11 @@ void dlio::OdomNode::initializePubSub() {
   ROS_INFO("initializePubSub");
   createPublishers();
   createSubscribers();
-  // this->broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
-  // this->broadcaster_ = std::shared_ptr<tf2_ros::TransformBroadcaster>();
-  // this->broadcaster_ = boost::make_shared<tf2_ros::TransformBroadcaster>();
-  // this->broadcaster_ = std::shared_ptr<tf2_ros::TransformBroadcaster>(*this);
-  // this->publish_timer = nh.createTimer(ros::Duration(0.02), std::bind(&dlio::OdomNode::publishPoseThread, this));
   // 发布tf位姿变换， 0.02为50Hz，可以和imu的频率相同
   this->publish_timer = mt_nh.createWallTimer(ros::WallDuration(0.02), std::bind(&dlio::OdomNode::publishPoseThread, this));
   // 最后一个 true表示只触发一次
   this->publish_timer_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishInitialMap, this), true);
   this->publish_full_map_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishFullMap, this), true);
-  // this->publish_gicp_pose_ = mt_nh.createWallTimer(ros::WallDuration(5), std::bind(&dlio::OdomNode::publishGicpPose, this));
-  // this->publish_gicp_pose_ = mt_nh.createWallTimer(ros::WallDuration(12), std::bind(&dlio::OdomNode::publishGicpPose, this), true);
-
-  // publish_timer_ = nh.createTimer(ros::Duration(0.02), &OdomNode::publishPoseThread, this);
 }
 
 void dlio::OdomNode::initialization() {
@@ -300,8 +266,7 @@ void dlio::OdomNode::setInputSource() {
 void dlio::OdomNode::propagateState() {
   std::lock_guard<std::mutex> lock(this->geo.mtx);
   double dt = this->imu_meas.dt;
-  // double dt = this->imu_meas.dt > 0.012f ? 0.01f : this->imu_meas.dt;
-  // RCLCPP_INFO("dt in propagateState: %.8f", dt);
+
   Eigen::Quaternionf qhat = this->state.q, omega;
   Eigen::Vector3f world_accel;
 
@@ -309,25 +274,12 @@ void dlio::OdomNode::propagateState() {
   // 这个imu_meas是否是imu转到lidar下的？
   world_accel = qhat._transformVector(this->imu_meas.lin_accel);
 
-  // Accel propogation
-  // float px = this->state.v.lin.w[0] * dt + 0.5 * dt * dt * world_accel[0];
-  // float py = this->state.v.lin.w[1] * dt + 0.5 * dt * dt * world_accel[1];
-  // float pz = this->state.v.lin.w[2] * dt +  0.5 * dt * dt * (world_accel[2] -
-  // this->gravity_); this->state.p[0] +=
-  //     px;
-  // this->state.p[1] +=
-  //     py;
-  // this->state.p[2] +=
-  //     pz;
-
   this->state.p[0] +=
       this->state.v.lin.w[0] * dt + 0.5 * dt * dt * world_accel[0];
   this->state.p[1] +=
       this->state.v.lin.w[1] * dt + 0.5 * dt * dt * world_accel[1];
   this->state.p[2] += this->state.v.lin.w[2] * dt +
                       0.5 * dt * dt * (world_accel[2] - this->gravity_);
-  // ROS_INFO("px, py, pz, dt in propagateState:[%.8f,%.8f,%.8f,%.8f]", 
-  // this->state.p[0], this->state.p[1], this->state.p[2], dt);
   this->state.v.lin.w[0] += world_accel[0] * dt;
   this->state.v.lin.w[1] += world_accel[1] * dt;
   this->state.v.lin.w[2] += (world_accel[2] - this->gravity_) * dt;
@@ -339,7 +291,6 @@ void dlio::OdomNode::propagateState() {
   this->state.q.w() += 0.5 * dt * tmp.w();
   this->state.q.vec() += 0.5 * dt * tmp.vec();
 
-  // Ensure quaternion is properly normalized
   this->state.q.normalize();
 
   this->state.v.ang.b = this->imu_meas.ang_vel;
@@ -353,13 +304,9 @@ void dlio::OdomNode::deskewPointcloud() {
   // 调整新点云的大小，以匹配原始扫描的点数
   deskewed_scan_->points.resize(this->original_scan->points.size());
 
-  // individual point timestamps should be relative to this time
-  // sweep_ref_time = rclcpp::Time(this->scan_header_stamp).seconds();
   // 计算相对于此时间的每个点的时间戳
   sweep_ref_time = this->scan_header_stamp.toSec();
-  // ROS_INFO("scan_header_stamp : %f", this->scan_header_stamp.toSec());
 
-  // sort points by timestamp and build list of timestamps
   // 定义三个函数对象用于后续处理
   std::function<bool(const PointType&, const PointType&)> point_time_cmp;
   std::function<bool(boost::range::index_value<PointType&, long>,
@@ -370,7 +317,6 @@ void dlio::OdomNode::deskewPointcloud() {
 
   // 调用函数设置上述函数对象
   pointTimeCallback(point_time_cmp, point_time_neq, extract_point_time);
-  // copy points into deskewed_scan_ in order of timestamp
 
   // 根据时间戳顺序复制点到新的点云中
   std::partial_sort_copy(this->original_scan->points.begin(),
@@ -378,13 +324,11 @@ void dlio::OdomNode::deskewPointcloud() {
                          deskewed_scan_->points.begin(),
                          deskewed_scan_->points.end(), point_time_cmp);
 
-  // filter unique timestamps
   // 过滤出具有唯一时间戳的点
   auto points_unique_timestamps =
       deskewed_scan_->points | boost::adaptors::indexed() |
       boost::adaptors::adjacent_filtered(point_time_neq);
 
-  // extract timestamps from points and put them in their own list
   // 从点中提取时间戳，并将它们存入一个列表中
   std::vector<double> timestamps;
   std::vector<int> unique_time_indices;
@@ -397,10 +341,8 @@ void dlio::OdomNode::deskewPointcloud() {
 
   // 计算中位点的索引，并设置扫描时间戳
   int median_pt_index = timestamps.size() / 2;
-  this->scan_stamp = timestamps[median_pt_index];  // set this->scan_stamp to the timestamp of
-                                    // the median point
+  this->scan_stamp = timestamps[median_pt_index];  
 
-  // don't process scans until IMU data is present
   // 如果没有有效的IMU数据，则不处理扫描
   if (!this->first_valid_scan) {
     if (this->imu_buffer.empty() || this->scan_stamp <= this->imu_buffer.back().stamp) {
@@ -410,13 +352,9 @@ void dlio::OdomNode::deskewPointcloud() {
       if (this->scan_stamp <= this->imu_buffer.back().stamp) {
         ROS_INFO("low");
       }
-      // ROS_INFO("scan_stamp:%f, imu:%f", this->scan_stamp, this->imu_buffer.back().stamp);
       ROS_WARN_ONCE("Waiting First Scan Valid....");
-      //RCLCPP_WARN_ONCE(get_logger(), "Waiting First Scan Valid....");
       return;
     }
-
-    // RCLCPP_INFO(get_logger(), "First Scan is Valid");
     ROS_INFO("First Scan is Valid");
     this->first_valid_scan = true;
     this->T_prior = this->T;  // assume no motion for the first scan
@@ -440,11 +378,8 @@ void dlio::OdomNode::deskewPointcloud() {
                               this->lidarPose.p,
                               this->geo.prev_vel.cast<float>(), timestamps);
 
-  // if there are no frames between the start and end of the sweep
-  // that probably means that there's a sync issue
   if (frames.size() != timestamps.size()) {
     
-    // RCLCPP_FATAL(this->get_logger(),"Bad time sync between LiDAR and IMU! frames: %d, timestamp: %d",frames.size(), timestamps.size());
     ROS_FATAL("Bad time sync between LiDAR and IMU! frames: %ld, timestamp: %ld", frames.size(), timestamps.size());
     this->T_prior = this->T;
     pcl::transformPointCloud(*deskewed_scan_, *deskewed_scan_,
@@ -542,15 +477,11 @@ void dlio::OdomNode::updateState() {
 
   Eigen::Vector3f pin = this->lidarPose.p;
   Eigen::Quaternionf qin = this->lidarPose.q;
-  double dt = scan_dt;  // this->scan_stamp - this->prev_scan_stamp;
+  double dt = scan_dt; 
   if (dt < 1e-6) {
     ROS_ERROR("scan dt is invalid: %f", dt);
     return;
   }
-  // if (dt > 0.065) {
-  //   ROS_INFO("scan dt is too large: %f", dt);
-  //   dt = 0.05;
-  // }
   Eigen::Quaternionf qe, qhat, qcorr;
   qhat = this->state.q;
 
@@ -574,7 +505,6 @@ void dlio::OdomNode::updateState() {
 
   double abias_max = this->geo_abias_max_;
   double gbias_max = this->geo_gbias_max_;
-  //yyyjf new callback func
   // Update accel bias
   this->state.b.accel -= dt * this->geo_Kab_ * err_body;
   this->state.b.accel = this->state.b.accel.array().min(abias_max).max(-abias_max);
@@ -619,22 +549,12 @@ void dlio::OdomNode::updateState() {
   this->geo.first_opt_done = true;
 }
 
-
-
-
 void dlio::OdomNode::getNextPose() {
   pcl::PointCloud<PointType>::Ptr aligned =
   pcl::make_shared<pcl::PointCloud<PointType>>();
   this->gicp.align(*aligned);
   aligned->header.frame_id = this->global_frame_id_;
-  // hv::async(std::bind(&OdomNode::publishCloud, this, aligned));
   this->T_corr = this->gicp.getFinalTransformation();
-  // this->T = this->T_corr * this->T_prior;
-
-  // rclcpp::Time end = this->now();
-  // rclcpp::Duration duration = end - start;
-  // RCLCPP_INFO(this->get_logger(), "*****Time interval: %.6f s",
-  //             duration.seconds());
   this->gicp_hasConverged = this->gicp.hasConverged();
 
   // //在这里添加发布对齐之后的点云
@@ -646,9 +566,6 @@ void dlio::OdomNode::getNextPose() {
     this->geo.first_opt_done = true;
     this->T = this->T_corr * this->T_prior;
     this->T_corr_prev = this->T_corr;
-    //  RCLCPP_INFO(get_logger(),"after lidar propogate: x %.8f, y %.8f, z
-    //  %.8f",
-    //     this->T(0,3), this->T(1,3), this->T(2,3));
   }
 
   this->propagateGICP();

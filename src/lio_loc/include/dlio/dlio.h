@@ -58,19 +58,3 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(dlio::Point,
                                  (double, timestamp, timestamp))
 
 typedef dlio::Point PointType;
-
-// 增加
-// struct LiovxPointCustomMsg
-// {
-//     PCL_ADD_POINT4D
-//     PCL_ADD_INTENSITY;
-//     float time;
-//     uint16_t ring;
-//     uint16_t tag;
-//     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-// } EIGEN_ALIGN16;
-// POINT_CLOUD_REGISTER_POINT_STRUCT (LiovxPointCustomMsg,
-//     (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity) (float, time, time)
-//     (uint16_t, ring, ring) (uint16_t, tag, tag)
-// )
-// using PointXYZIRT = LiovxPointCustomMsg;

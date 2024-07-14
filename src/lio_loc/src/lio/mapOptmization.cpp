@@ -1,37 +1,5 @@
-/************************************************* 
-GitHub: https://github.com/smilefacehh/LIO-SAM-DetailedNote
-Author: lutao2014@163.com
-Date: 2021-02-21 
---------------------------------------------------
-功能简介:
-    1、scan-to-map匹配：提取当前激光帧特征点（角点、平面点），局部关键帧map的特征点，执行scan-to-map迭代优化，更新当前帧位姿；
-    2、关键帧因子图优化：关键帧加入因子图，添加激光里程计因子、GPS因子、闭环因子，执行因子图优化，更新所有关键帧位姿；
-    3、闭环检测：在历史关键帧中找距离相近，时间相隔较远的帧设为匹配帧，匹配帧周围提取局部关键帧map，同样执行scan-to-map匹配，得到位姿变换，构建闭环因子数据，加入因子图优化。
-
-订阅：
-    1、订阅当前激光帧点云信息，来自FeatureExtraction；
-    2、订阅GPS里程计；
-    3、订阅来自外部闭环检测程序提供的闭环数据，本程序没有提供，这里实际没用上。
-
-
-发布：
-    1、发布历史关键帧里程计；
-    2、发布局部关键帧map的特征点云；
-    3、发布激光里程计，rviz中表现为坐标轴；
-    4、发布激光里程计；
-    5、发布激光里程计路径，rviz中表现为载体的运行轨迹；
-    6、发布地图保存服务；
-    7、发布闭环匹配关键帧局部map；
-    8、发布当前关键帧经过闭环优化后的位姿变换之后的特征点云；
-    9、发布闭环边，rviz中表现为闭环帧之间的连线；
-    10、发布局部map的降采样平面点集合；
-    11、发布历史帧（累加的）的角点、平面点降采样集合；
-    12、发布当前帧原始点云配准之后的点云。
-**************************************************/ 
 #include "lio/utility.h"
 #include "dlio_loc/cloud_info.h"
-// #include "lio_sam/save_map.h"
-
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -115,8 +83,6 @@ public:
     std::deque<nav_msgs::Odometry> gpsQueue;
     dlio_loc::cloud_info cloudInfo;
 
-    // 历史所有关键帧的角点集合（降采样）
-    // vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
     // 历史所有关键帧的平面点集合（降采样）
     vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
     
@@ -126,13 +92,9 @@ public:
     pcl::PointCloud<PointTypePose>::Ptr cloudKeyPoses6D;
     pcl::PointCloud<PointType>::Ptr copy_cloudKeyPoses3D;
     pcl::PointCloud<PointTypePose>::Ptr copy_cloudKeyPoses6D;
-
-    // 当前激光帧角点集合
-    // pcl::PointCloud<PointType>::Ptr laserCloudCornerLast; 
     // 当前激光帧平面点集合
     pcl::PointCloud<PointType>::Ptr laserCloudSurfLast; 
     // 当前激光帧角点集合，降采样，DS: DownSize
-    // pcl::PointCloud<PointType>::Ptr laserCloudCornerLastDS; 
     // 当前激光帧平面点集合，降采样
     pcl::PointCloud<PointType>::Ptr laserCloudSurfLastDS; 
 
@@ -140,34 +102,25 @@ public:
     pcl::PointCloud<PointType>::Ptr laserCloudOri;
     pcl::PointCloud<PointType>::Ptr coeffSel;
 
-    // 当前帧与局部map匹配上了的角点、参数、标记
-    // std::vector<PointType> laserCloudOriCornerVec; 
-    // std::vector<PointType> coeffSelCornerVec;
-    // std::vector<bool> laserCloudOriCornerFlag;
     // 当前帧与局部map匹配上了的平面点、参数、标记
     std::vector<PointType> laserCloudOriSurfVec; 
     std::vector<PointType> coeffSelSurfVec;
     std::vector<bool> laserCloudOriSurfFlag;
 
     map<int, pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
-    // 局部map的角点集合
-    // pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap;
     // 局部map的平面点集合
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap;
     // 局部map的角点集合，降采样
-    // pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
     // 局部map的平面点集合，降采样
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
     // 局部关键帧构建的map点云，对应kdtree，用于scan-to-map找相邻点
-    // pcl::KdTreeFLANN<PointType>::Ptr kdtreeCornerFromMap;
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurfFromMap;
 
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeHistoryKeyPoses;
 
     // 降采样
-    // pcl::VoxelGrid<PointType> downSizeFilterCorner;
     pcl::VoxelGrid<PointType> downSizeFilterSurf;
     pcl::VoxelGrid<PointType> downSizeFilterLocalMapSurf;
     pcl::VoxelGrid<PointType> downSizeFilterICP;
@@ -186,15 +139,6 @@ public:
 
     bool isDegenerate = false;
     cv::Mat matP;
-
-    // // 局部map角点数量
-    // int laserCloudCornerFromMapDSNum = 0;
-    // // 局部map平面点数量
-    // int laserCloudSurfFromMapDSNum = 0;
-    // // 当前激光帧角点数量
-    // int laserCloudCornerLastDSNum = 0;      
-    // // 当前激光帧面点数量
-    // int laserCloudSurfLastDSNum = 0;
 
     int laserCloudSurfFromMapDSNum = 0;
     int laserCloudSurfLastDSNum = 0;
@@ -216,12 +160,10 @@ public:
     Eigen::Affine3f incrementalOdometryAffineBack;
 
     //@yjf
-    // add initlocalization
     ros::Subscriber sub_initial_pose;
     bool has_initialize_pose = false;
     bool system_initialized = false;
     bool has_global_map = false;
-    // bool gicp_pose = false;
     float initialize_pose[6];
 
     /**
@@ -253,9 +195,6 @@ public:
         // 订阅来自外部闭环检测程序提供的闭环数据，本程序没有提供，这里实际没用上
         subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-        // 发布地图保存服务
-        // srvSaveMap  = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
-
         // 发布闭环匹配关键帧局部map
         pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
         // 发布当前关键帧经过闭环优化后的位姿变换之后的特征点云
@@ -277,7 +216,6 @@ public:
         // 初始化位姿
         sub_initial_pose = nh.subscribe("gicp_pose", 10, &mapOptimization::initialposeHandler, this);
 
-        // downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
         downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
         
         //@yjf
@@ -304,30 +242,20 @@ public:
         kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
         kdtreeHistoryKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
 
-        // laserCloudCornerLast.reset(new pcl::PointCloud<PointType>()); // corner feature set from odoOptimization
-        laserCloudSurfLast.reset(new pcl::PointCloud<PointType>()); // surf feature set from odoOptimization
-        // laserCloudCornerLastDS.reset(new pcl::PointCloud<PointType>()); // downsampled corner featuer set from odoOptimization
-        laserCloudSurfLastDS.reset(new pcl::PointCloud<PointType>()); // downsampled surf featuer set from odoOptimization
+        laserCloudSurfLast.reset(new pcl::PointCloud<PointType>());
+        laserCloudSurfLastDS.reset(new pcl::PointCloud<PointType>()); 
 
         laserCloudOri.reset(new pcl::PointCloud<PointType>());
         coeffSel.reset(new pcl::PointCloud<PointType>());
 
-        // laserCloudOriCornerVec.resize(N_SCAN * Horizon_SCAN);
-        // coeffSelCornerVec.resize(N_SCAN * Horizon_SCAN);
-        // laserCloudOriCornerFlag.resize(N_SCAN * Horizon_SCAN);
         laserCloudOriSurfVec.resize(N_SCAN * Horizon_SCAN);
         coeffSelSurfVec.resize(N_SCAN * Horizon_SCAN);
         laserCloudOriSurfFlag.resize(N_SCAN * Horizon_SCAN);
 
-        // std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(), false);
         std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
 
-        // laserCloudCornerFromMap.reset(new pcl::PointCloud<PointType>());
         laserCloudSurfFromMap.reset(new pcl::PointCloud<PointType>());
-        // laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
         laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
-
-        // kdtreeCornerFromMap.reset(new pcl::KdTreeFLANN<PointType>());
         kdtreeSurfFromMap.reset(new pcl::KdTreeFLANN<PointType>());
 
         for (int i = 0; i < 6; ++i){
@@ -337,38 +265,6 @@ public:
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
     }
 
-    /**
-     * 订阅当前激光帧点云信息，来自featureExtraction
-     * 1、当前帧位姿初始化
-     *   1) 如果是第一帧，用原始imu数据的RPY初始化当前帧位姿（旋转部分）
-     *   2) 后续帧，用imu里程计计算两帧之间的增量位姿变换，作用于前一帧的激光位姿，得到当前帧激光位姿
-     * 2、提取局部角点、平面点云集合，加入局部map
-     *   1) 对最近的一帧关键帧，搜索时空维度上相邻的关键帧集合，降采样一下
-     *   2) 对关键帧集合中的每一帧，提取对应的角点、平面点，加入局部map中
-     * 3、当前激光帧角点、平面点集合降采样
-     * 4、scan-to-map优化当前帧位姿
-     *   (1) 要求当前帧特征点数量足够多，且匹配的点数够多，才执行优化
-     *   (2) 迭代30次（上限）优化
-     *      1) 当前激光帧角点寻找局部map匹配点
-     *          a.更新当前帧位姿，将当前帧角点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成直线（用距离中心点的协方差矩阵，特征值进行判断），则认为匹配上了
-     *          b.计算当前帧角点到直线的距离、垂线的单位向量，存储为角点参数
-     *      2) 当前激光帧平面点寻找局部map匹配点
-     *          a.更新当前帧位姿，将当前帧平面点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成平面（最小二乘拟合平面），则认为匹配上了
-     *          b.计算当前帧平面点到平面的距离、垂线的单位向量，存储为平面点参数
-     *      3) 提取当前帧中与局部map匹配上了的角点、平面点，加入同一集合
-     *      4) 对匹配特征点计算Jacobian矩阵，观测值为特征点到直线、平面的距离，构建高斯牛顿方程，迭代优化当前位姿，存transformTobeMapped
-     *   (3)用imu原始RPY数据与scan-to-map优化后的位姿进行加权融合，更新当前帧位姿的roll、pitch，约束z坐标
-     * 5、设置当前帧为关键帧并执行因子图优化
-     *   1) 计算当前帧与前一帧位姿变换，如果变化太小，不设为关键帧，反之设为关键帧
-     *   2) 添加激光里程计因子、GPS因子、闭环因子
-     *   3) 执行因子图优化
-     *   4) 得到当前帧优化后位姿，位姿协方差
-     *   5) 添加cloudKeyPoses3D，cloudKeyPoses6D，更新transformTobeMapped，添加当前关键帧的角点、平面点集合
-     * 6、更新因子图中所有变量节点的位姿，也就是所有历史关键帧的位姿，更新里程计轨迹
-     * 7、发布激光里程计
-     * 8、发布里程计、点云、轨迹
-    */
-    
     //@yjf
     void loadGlobalMap() {
         std::string global_map = savePCDDirectory;
@@ -378,8 +274,6 @@ public:
             ROS_ERROR("no pcd");
             return;
         }
-        // cout << "map size: %d:" << laserCloudSurfFromMap->size() << endl;
-
         downSizeFilterLocalMapSurf.setInputCloud(laserCloudSurfFromMap);
         downSizeFilterLocalMapSurf.filter(*laserCloudSurfFromMapDS);
         laserCloudSurfFromMapDSNum = laserCloudSurfFromMapDS->size();
@@ -415,28 +309,10 @@ public:
         initialize_pose[4] = msgIn->pose.position.y;
         initialize_pose[5] = msgIn->pose.position.z;
 
-        // std::cout << "dlio_loc_gicp pose: \n" << "x:" << initialize_pose[3] << "  y:" << initialize_pose[4] << "  z:" << initialize_pose[5] << "\n" 
-        //           << "roll:" << initialize_pose[0] << " pitch:" << initialize_pose[1] << " yaw:" << initialize_pose[2] << std::endl;
-
         has_initialize_pose = true;
         if (system_initialized) {
             systemUpdatePose();
         }
-
-        // // 更新校正后的位姿
-        // transformTobeMapped[0] = initialize_pose[0];
-        // transformTobeMapped[1] = initialize_pose[1];
-        // transformTobeMapped[2] = initialize_pose[2];
-        // transformTobeMapped[3] = initialize_pose[3];
-        // transformTobeMapped[4] = initialize_pose[4];
-        // transformTobeMapped[5] = initialize_pose[5];
-        // // 使用校正后的位姿变换原始点云，并发布
-        // pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
-        // PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
-        // *cloudOut += *transformPointCloud(laserCloudSurfLast, &thisPose6D);
-        // publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, mapFrame);
-        // system_initialized = true;
-        // std::cout << "update successful"<< endl;
     }
 
 
@@ -448,8 +324,6 @@ public:
 
         // 提取当前激光帧角点、平面点集合
         cloudInfo = *msgIn;
-        // pcl::fromROSMsg(msgIn->cloud_corner,  *laserCloudCornerLast);
-        // pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
         pcl::fromROSMsg(msgIn->cloud_deskewed, *laserCloudSurfLast);
         
         std::lock_guard<std::mutex> lock(mtx);
@@ -464,43 +338,19 @@ public:
                 if (!systemInitialize())
                     return;
             }  
-            //need to fix code
-            // if (system_initialized) {
-            //     systemInitialize();
-            // } 
             // 当前帧位姿初始化
-            // 1、如果是第一帧，用原始imu数据的RPY初始化当前帧位姿（旋转部分）
-            // 2、后续帧，用imu里程计计算两帧之间的增量位姿变换，作用于前一帧的激光位姿，得到当前帧激光位姿
             updateInitialGuess();
 
             // 提取局部角点、平面点云集合，加入局部map
-            // 1、对最近的一帧关键帧，搜索时空维度上相邻的关键帧集合，降采样一下
-            // 2、对关键帧集合中的每一帧，提取对应的角点、平面点，加入局部map中
             extractSurroundingKeyFrames();
 
             // 当前激光帧角点、平面点集合降采样
             downsampleCurrentScan();
 
             // scan-to-map优化当前帧位姿
-            // 1、要求当前帧特征点数量足够多，且匹配的点数够多，才执行优化
-            // 2、迭代30次（上限）优化
-            //    1) 当前激光帧角点寻找局部map匹配点
-            //       a.更新当前帧位姿，将当前帧角点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成直线（用距离中心点的协方差矩阵，特征值进行判断），则认为匹配上了
-            //       b.计算当前帧角点到直线的距离、垂线的单位向量，存储为角点参数
-            //    2) 当前激光帧平面点寻找局部map匹配点
-            //       a.更新当前帧位姿，将当前帧平面点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成平面（最小二乘拟合平面），则认为匹配上了
-            //       b.计算当前帧平面点到平面的距离、垂线的单位向量，存储为平面点参数
-            //    3) 提取当前帧中与局部map匹配上了的角点、平面点，加入同一集合
-            //    4) 对匹配特征点计算Jacobian矩阵，观测值为特征点到直线、平面的距离，构建高斯牛顿方程，迭代优化当前位姿，存transformTobeMapped
-            // 3、用imu原始RPY数据与scan-to-map优化后的位姿进行加权融合，更新当前帧位姿的roll、pitch，约束z坐标
             scan2MapOptimization();
 
             // 设置当前帧为关键帧并执行因子图优化
-            // 1、计算当前帧与前一帧位姿变换，如果变化太小，不设为关键帧，反之设为关键帧
-            // 2、添加激光里程计因子、GPS因子、闭环因子
-            // 3、执行因子图优化
-            // 4、得到当前帧优化后位姿，位姿协方差
-            // 5、添加cloudKeyPoses3D，cloudKeyPoses6D，更新transformTobeMapped，添加当前关键帧的角点、平面点集合
             saveKeyFramesAndFactor();
 
             // 更新因子图中所有变量节点的位姿，也就是所有历史关键帧的位姿，更新里程计轨迹
@@ -510,10 +360,6 @@ public:
             publishOdometry();
 
             // 发布里程计、点云、轨迹
-            // 1、发布历史关键帧位姿集合
-            // 2、发布局部map的降采样平面点集合
-            // 3、发布历史帧（累加的）的角点、平面点降采样集合
-            // 4、发布里程计轨迹
             publishFrames();
         }
     }
@@ -537,39 +383,8 @@ public:
     bool systemInitialize() {
         if (!has_initialize_pose) {
             cout << "Wait initilize pose" << endl;
-            // ROS_INFO("Wait initilize pose");
             return false;
         }
-        // static pcl::IterativeClosestPoint<PointType, PointType> icp;
-        // icp.setMaxCorrespondenceDistance(20);
-        // icp.setMaximumIterations(100);
-        // icp.setTransformationEpsilon(1e-6);
-        // icp.setEuclideanFitnessEpsilon(1e-6);
-        // icp.setRANSACIterations(0);
-
-        // Eigen::Affine3f initialize_affine = trans2Affine3f(initialize_pose);
-
-        // pcl::PointCloud<PointType>::Ptr out_cloud(new pcl::PointCloud<PointType>());
-        // pcl::PointCloud<PointType>::Ptr result(new pcl::PointCloud<PointType>());
-        // pcl::transformPointCloud(*laserCloudSurfLast, *out_cloud, initialize_affine);
-        // // Align clouds
-        // icp.setInputSource(out_cloud);
-        // icp.setInputTarget(laserCloudSurfFromMapDS);
-        // icp.align(*result);
-
-        // Eigen::Affine3f correctionLidarFrame;
-        // float x, y, z, roll, pitch, yaw;
-        // correctionLidarFrame = icp.getFinalTransformation();
-        // Eigen::Affine3f tCorrect = correctionLidarFrame * initialize_affine;
-        // pcl::getTranslationAndEulerAngles (tCorrect, x, y, z, roll, pitch, yaw);
-
-        // transformTobeMapped[0] = roll;
-        // transformTobeMapped[1] = pitch;
-        // transformTobeMapped[2] = yaw;
-        // transformTobeMapped[3] = x;
-        // transformTobeMapped[4] = y;
-        // transformTobeMapped[5] = z;
-
         // 更新校正后的位姿
         transformTobeMapped[0] = initialize_pose[0];
         transformTobeMapped[1] = initialize_pose[1];
@@ -583,21 +398,8 @@ public:
         *cloudOut += *transformPointCloud(laserCloudSurfLast, &thisPose6D);
         publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, mapFrame);
         system_initialized = true;
-        // cout << "update successful" << endl;
         ROS_INFO("initilize pose successful");
         return true;
-        // if (icp.hasConverged() && icp.getFitnessScore() < 0.3) {
-        //     // ROS_INFO("initialize pose sucessful");
-        //     cout << "update successful" << endl;
-        //     system_initialized = true;
-        //     return true;
-        // } else {
-        //     cout << "update failed" << endl;
-        //     // ROS_ERROR("initialize pose failed");
-        //     has_initialize_pose = false;
-        //     system_initialized = false;
-        //     return false;
-        // }
     }
 
     /**
@@ -691,80 +493,7 @@ public:
         thisPose6D.yaw   = transformIn[2];
         return thisPose6D;
     }
-
-    
-    /**
-     * 保存全局关键帧特征点集合
-    */
-    // bool saveMapService(lio_sam::save_mapRequest& req, lio_sam::save_mapResponse& res)
-    // {
-    //   string saveMapDirectory;
-
-    //   cout << "****************************************************" << endl;
-    //   cout << "Saving map to pcd files ..." << endl;
-    //   if(req.destination.empty()) saveMapDirectory = std::getenv("HOME") + savePCDDirectory;
-    //   else saveMapDirectory = std::getenv("HOME") + req.destination;
-    //   cout << "Save destination: " << saveMapDirectory << endl;
-    //   // 这个代码太坑了！！注释掉
-    //   // int unused = system((std::string("exec rm -r ") + saveMapDirectory).c_str());
-    //   // unused = system((std::string("mkdir -p ") + saveMapDirectory).c_str());
-    //   // 保存历史关键帧位姿
-    //   pcl::io::savePCDFileBinary(saveMapDirectory + "/trajectory.pcd", *cloudKeyPoses3D);
-    //   pcl::io::savePCDFileBinary(saveMapDirectory + "/transformations.pcd", *cloudKeyPoses6D);
-    //   // 提取历史关键帧角点、平面点集合
-    //   pcl::PointCloud<PointType>::Ptr globalCornerCloud(new pcl::PointCloud<PointType>());
-    //   pcl::PointCloud<PointType>::Ptr globalCornerCloudDS(new pcl::PointCloud<PointType>());
-    //   pcl::PointCloud<PointType>::Ptr globalSurfCloud(new pcl::PointCloud<PointType>());
-    //   pcl::PointCloud<PointType>::Ptr globalSurfCloudDS(new pcl::PointCloud<PointType>());
-    //   pcl::PointCloud<PointType>::Ptr globalMapCloud(new pcl::PointCloud<PointType>());
-    //   for (int i = 0; i < (int)cloudKeyPoses3D->size(); i++) {
-    //       *globalCornerCloud += *transformPointCloud(cornerCloudKeyFrames[i],  &cloudKeyPoses6D->points[i]);
-    //       *globalSurfCloud   += *transformPointCloud(surfCloudKeyFrames[i],    &cloudKeyPoses6D->points[i]);
-    //       cout << "\r" << std::flush << "Processing feature cloud " << i << " of " << cloudKeyPoses6D->size() << " ...";
-    //   }
-
-    //   if(req.resolution != 0)
-    //   {
-    //     cout << "\n\nSave resolution: " << req.resolution << endl;
-
-    //     // 降采样
-    //     downSizeFilterCorner.setInputCloud(globalCornerCloud);
-    //     downSizeFilterCorner.setLeafSize(req.resolution, req.resolution, req.resolution);
-    //     downSizeFilterCorner.filter(*globalCornerCloudDS);
-    //     pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloudDS);
-    //     // 降采样
-    //     downSizeFilterSurf.setInputCloud(globalSurfCloud);
-    //     downSizeFilterSurf.setLeafSize(req.resolution, req.resolution, req.resolution);
-    //     downSizeFilterSurf.filter(*globalSurfCloudDS);
-    //     pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", *globalSurfCloudDS);
-    //   }
-    //   else
-    //   {
-    //     pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloud);
-    //     pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", *globalSurfCloud);
-    //   }
-
-    //   // 保存到一起，全局关键帧特征点集合
-    //   *globalMapCloud += *globalCornerCloud;
-    //   *globalMapCloud += *globalSurfCloud;
-
-    //   int ret = pcl::io::savePCDFileBinary(saveMapDirectory + "/GlobalMap.pcd", *globalMapCloud);
-    //   res.success = ret == 0;
-
-    //   downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
-    //   downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
-
-    //   cout << "****************************************************" << endl;
-    //   cout << "Saving map to pcd files completed\n" << endl;
-
-    //   return true;
-    // }
-
-    /**
-     * 展示线程
-     * 1、发布局部关键帧map的特征点云
-     * 2、保存全局关键帧特征点集合
-    */
+    // 展示线程
     void visualizeGlobalMapThread()
     {
         ros::Rate rate(0.2);
@@ -776,14 +505,6 @@ public:
 
         if (savePCD == false)
             return;
-
-        // lio_sam::save_mapRequest  req;
-        // lio_sam::save_mapResponse res;
-
-        // // 保存全局关键帧特征点集合
-        // if(!saveMapService(req, res)){
-        //     cout << "Fail to save map" << endl;
-        // }
     }
 
     /**
@@ -821,12 +542,6 @@ public:
 
         // 提取局部相邻关键帧对应的特征点云
         for (int i = 0; i < (int)globalMapKeyPosesDS->size(); ++i){
-            // 距离过大
-            // if (pointDistance(globalMapKeyPosesDS->points[i], cloudKeyPoses3D->back()) > globalMapVisualizationSearchRadius)
-            //     continue;
-            // int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
-            // *globalMapKeyFrames += *transformPointCloud(cornerCloudKeyFrames[thisKeyInd],  &cloudKeyPoses6D->points[thisKeyInd]);
-            // *globalMapKeyFrames += *transformPointCloud(surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
             if (common_lib_->pointDistance(globalMapKeyPosesDS->points[i], cloudKeyPoses3D->back()) > globalMapVisualizationSearchRadius)
                 continue;
             int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
@@ -859,10 +574,6 @@ public:
         {
             rate.sleep();
             // 闭环scan-to-map，icp优化位姿
-            // 1、在历史关键帧中查找与当前关键帧距离最近的关键帧集合，选择时间相隔较远的一帧作为候选闭环帧
-            // 2、提取当前关键帧特征点集合，降采样；提取闭环匹配关键帧前后相邻若干帧的关键帧特征点集合，降采样
-            // 3、执行scan-to-map优化，调用icp方法，得到优化后位姿，构造闭环因子需要的数据，在因子图优化中一并加入更新位姿
-            // 注：闭环的时候没有立即更新当前帧的位姿，而是添加闭环因子，让图优化去更新位姿
             performLoopClosure();
             // rviz展示闭环边
             visualizeLoopClosure();
@@ -886,10 +597,6 @@ public:
 
     /**
      * 闭环scan-to-map，icp优化位姿
-     * 1、在历史关键帧中查找与当前关键帧距离最近的关键帧集合，选择时间相隔较远的一帧作为候选闭环帧
-     * 2、提取当前关键帧特征点集合，降采样；提取闭环匹配关键帧前后相邻若干帧的关键帧特征点集合，降采样
-     * 3、执行scan-to-map优化，调用icp方法，得到优化后位姿，构造闭环因子需要的数据，在因子图优化中一并加入更新位姿
-     * 注：闭环的时候没有立即更新当前帧的位姿，而是添加闭环因子，让图优化去更新位姿
     */
     void performLoopClosure()
     {
@@ -1090,7 +797,6 @@ public:
             int keyNear = key + i;
             if (keyNear < 0 || keyNear >= cloudSize )
                 continue;
-            // *nearKeyframes += *transformPointCloud(cornerCloudKeyFrames[keyNear], &copy_cloudKeyPoses6D->points[keyNear]);
             *nearKeyframes += *transformPointCloud(surfCloudKeyFrames[keyNear],   &copy_cloudKeyPoses6D->points[keyNear]);
         }
 
@@ -1161,15 +867,6 @@ public:
         pubLoopConstraintEdge.publish(markerArray);
     }
 
-
-
-
-
-
-
-    
-
-
     /**
      * 当前帧位姿初始化
      * 1、如果是第一帧，用原始imu数据的RPY初始化当前帧位姿（旋转部分）
@@ -1186,14 +883,6 @@ public:
         // 如果关键帧集合为空，继续进行初始化
         if (cloudKeyPoses3D->points.empty())
         {
-            // 当前帧位姿的旋转部分，用激光帧信息中的RPY（来自imu原始数据）初始化
-            // transformTobeMapped[0] = cloudInfo.imuRollInit;
-            // transformTobeMapped[1] = cloudInfo.imuPitchInit;
-            // transformTobeMapped[2] = cloudInfo.imuYawInit;
-
-            // if (!useImuHeadingInitialization)
-            //     transformTobeMapped[2] = 0;
-
             lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); 
             return;
         }
@@ -1337,24 +1026,17 @@ public:
             int thisKeyInd = (int)cloudToExtract->points[i].intensity;
             if (laserCloudMapContainer.find(thisKeyInd) != laserCloudMapContainer.end()) 
             {
-                // *laserCloudCornerFromMap += laserCloudMapContainer[thisKeyInd].first;
                 *laserCloudSurfFromMap   += laserCloudMapContainer[thisKeyInd].second;
             } else {
                 // 相邻关键帧对应的角点、平面点云，通过6D位姿变换到世界坐标系下
                 pcl::PointCloud<PointType> laserCloudCornerTemp;
                 pcl::PointCloud<PointType> laserCloudSurfTemp = *transformPointCloud(surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
                 // 加入局部map
-                // *laserCloudCornerFromMap += laserCloudCornerTemp;
                 *laserCloudSurfFromMap   += laserCloudSurfTemp;
                 laserCloudMapContainer[thisKeyInd] = make_pair(laserCloudCornerTemp, laserCloudSurfTemp);
             }
             
         }
-
-        // 降采样局部角点map
-        // downSizeFilterCorner.setInputCloud(laserCloudCornerFromMap);
-        // downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
-        // laserCloudCornerFromMapDSNum = laserCloudCornerFromMapDS->size();
         // 降采样局部平面点map
         downSizeFilterLocalMapSurf.setInputCloud(laserCloudSurfFromMap);
         downSizeFilterLocalMapSurf.filter(*laserCloudSurfFromMapDS);
@@ -1374,18 +1056,6 @@ public:
     {
         if (cloudKeyPoses3D->points.empty() == true)
             return; 
-        
-        // if (loopClosureEnableFlag == true)
-        // {
-        //     extractForLoopClosure();    
-        // } else {
-        //     extractNearby();
-        // }
-
-        // 提取局部角点、平面点云集合，加入局部map
-        // 1、对最近的一帧关键帧，搜索时空维度上相邻的关键帧集合，降采样一下
-        // 2、对关键帧集合中的每一帧，提取对应的角点、平面点，加入局部map中
-        // extractNearby();
     }
 
     /**
@@ -1393,12 +1063,6 @@ public:
     */
     void downsampleCurrentScan()
     {
-        // 当前激光帧角点集合降采样
-        // laserCloudCornerLastDS->clear();
-        // downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
-        // downSizeFilterCorner.filter(*laserCloudCornerLastDS);
-        // laserCloudCornerLastDSNum = laserCloudCornerLastDS->size();
-
         // 当前激光帧平面点集合降采样
         laserCloudSurfLastDS->clear();
         downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
@@ -1416,8 +1080,6 @@ public:
 
     /**
      * 当前激光帧平面点寻找局部map匹配点
-     * 1、更新当前帧位姿，将当前帧平面点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成平面（最小二乘拟合平面），则认为匹配上了
-     * 2、计算当前帧平面点到平面的距离、垂线的单位向量，存储为平面点参数
     */
     void surfOptimization()
     {
@@ -1515,13 +1177,6 @@ public:
     */
     void combineOptimizationCoeffs()
     {
-        // 遍历当前帧角点集合，提取出与局部map匹配上了的角点
-        // for (int i = 0; i < laserCloudCornerLastDSNum; ++i){
-        //     if (laserCloudOriCornerFlag[i] == true){
-        //         laserCloudOri->push_back(laserCloudOriCornerVec[i]);
-        //         coeffSel->push_back(coeffSelCornerVec[i]);
-        //     }
-        // }
         // 遍历当前帧平面点集合，提取出与局部map匹配上了的平面点
         for (int i = 0; i < laserCloudSurfLastDSNum; ++i){
             if (laserCloudOriSurfFlag[i] == true){
@@ -1530,7 +1185,6 @@ public:
             }
         }
         // 清空标记
-        // std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(), false);
         std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
     }
 
@@ -1541,15 +1195,6 @@ public:
     */
     bool LMOptimization(int iterCount)
     {
-        // This optimization is from the original loam_velodyne by Ji Zhang, need to cope with coordinate transformation
-        // lidar <- camera      ---     camera <- lidar
-        // x = z                ---     x = y
-        // y = x                ---     y = z
-        // z = y                ---     z = x
-        // roll = yaw           ---     roll = pitch
-        // pitch = roll         ---     pitch = yaw
-        // yaw = pitch          ---     yaw = roll
-
         // lidar -> camera
         float srx = sin(transformTobeMapped[2]);
         float crx = cos(transformTobeMapped[2]);
@@ -1689,10 +1334,6 @@ public:
         // 当前激光帧的角点、平面点数量足够多
         if (laserCloudSurfLastDSNum > 30)
         {
-            // kdtree输入为局部map点云
-            // kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
-            // kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
-
             // 迭代30次
             for (int iterCount = 0; iterCount < 30; iterCount++)
             {
@@ -1700,14 +1341,6 @@ public:
                 laserCloudOri->clear();
                 coeffSel->clear();
 
-                // 当前激光帧角点寻找局部map匹配点
-                // 1、更新当前帧位姿，将当前帧角点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成直线（用距离中心点的协方差矩阵，特征值进行判断），则认为匹配上了
-                // 2、计算当前帧角点到直线的距离、垂线的单位向量，存储为角点参数
-                // cornerOptimization();
-
-                // 当前激光帧平面点寻找局部map匹配点
-                // 1、更新当前帧位姿，将当前帧平面点坐标变换到map系下，在局部map中查找5个最近点，距离小于1m，且5个点构成平面（最小二乘拟合平面），则认为匹配上了
-                // 2、计算当前帧平面点到平面的距离、垂线的单位向量，存储为平面点参数
                 surfOptimization();
 
                 // 提取当前帧中与局部map匹配上了的角点、平面点，加入同一集合
@@ -1960,9 +1593,6 @@ public:
 
         // 闭环因子
         addLoopFactor();
-
-        // cout << "****************************************************" << endl;
-        // gtSAMgraph.print("GTSAM Graph:\n");
         
         // 执行优化
         isam->update(gtSAMgraph, initialEstimate);
@@ -1989,8 +1619,6 @@ public:
         isamCurrentEstimate = isam->calculateEstimate();
         // 当前帧位姿结果
         latestEstimate = isamCurrentEstimate.at<Pose3>(isamCurrentEstimate.size()-1);
-        // cout << "****************************************************" << endl;
-        // isamCurrentEstimate.print("Current estimate: ");
 
         // cloudKeyPoses3D加入当前帧位姿
         thisPose3D.x = latestEstimate.translation().x();
@@ -2011,9 +1639,6 @@ public:
         thisPose6D.time = timeLaserInfoCur;
         cloudKeyPoses6D->push_back(thisPose6D);
 
-        // cout << "****************************************************" << endl;
-        // cout << "Pose covariance:" << endl;
-        // cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << endl << endl;
         // 位姿协方差
         poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size()-1);
 
@@ -2026,13 +1651,9 @@ public:
         transformTobeMapped[5] = latestEstimate.translation().z();
 
         // 当前帧激光角点、平面点，降采样集合
-        // pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr thisSurfKeyFrame(new pcl::PointCloud<PointType>());
-        // pcl::copyPointCloud(*laserCloudCornerLastDS,  *thisCornerKeyFrame);
         pcl::copyPointCloud(*laserCloudSurfLastDS,    *thisSurfKeyFrame);
-
         // 保存特征点降采样集合
-        // cornerCloudKeyFrames.push_back(thisCornerKeyFrame);
         surfCloudKeyFrames.push_back(thisSurfKeyFrame);
 
         // 更新里程计轨迹
@@ -2194,7 +1815,6 @@ public:
         {
             pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
             PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
-            // *cloudOut += *transformPointCloud(laserCloudCornerLastDS,  &thisPose6D);
             *cloudOut += *transformPointCloud(laserCloudSurfLastDS,    &thisPose6D);
             publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
         }
@@ -2215,7 +1835,6 @@ public:
             pubPath.publish(globalPath);
         }
         //@yjf
-        // publish SLAM infomation for 3rd-party usage
         static unsigned int lastSLAMInfoPubSize = -1;
         if (pubSLAMInfo.getNumSubscribers() != 0)
         {
@@ -2243,17 +1862,8 @@ public:
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "lio_sam");
-
     mapOptimization MO;
-
     ROS_INFO("\033[1;32m----> Map Optimization Started.\033[0m");
-    // std::thread loopthread(&mapOptimization::loopClosureThread, &MO);
-    // std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
-
     ros::spin();
-
-    // loopthread.join();
-    // visualizeMapThread.join();
-
     return 0;
 }

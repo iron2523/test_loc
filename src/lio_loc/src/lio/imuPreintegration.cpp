@@ -1,37 +1,5 @@
-/************************************************* 
-GitHub: https://github.com/smilefacehh/LIO-SAM-DetailedNote
-Author: lutao2014@163.com
-Date: 2021-02-21 
---------------------------------------------------
-TransformFusion类
-功能简介：
-    主要功能是订阅激光里程计（来自MapOptimization）和IMU里程计，根据前一时刻激光里程计，和该时刻到当前时刻的IMU里程计变换增量，计算当前时刻IMU里程计；rviz展示IMU里程计轨迹（局部）。
-
-订阅：
-    1、订阅激光里程计，来自MapOptimization；
-    2、订阅imu里程计，来自ImuPreintegration。
-
-
-发布：
-    1、发布IMU里程计，用于rviz展示；
-    2、发布IMU里程计轨迹，仅展示最近一帧激光里程计时刻到当前时刻之间的轨迹。
---------------------------------------------------
-IMUPreintegration类
-功能简介：
-    1、用激光里程计，两帧激光里程计之间的IMU预计分量构建因子图，优化当前帧的状态（包括位姿、速度、偏置）;
-    2、以优化后的状态为基础，施加IMU预计分量，得到每一时刻的IMU里程计。
-
-订阅：
-    1、订阅IMU原始数据，以因子图优化后的激光里程计为基础，施加两帧之间的IMU预计分量，预测每一时刻（IMU频率）的IMU里程计；
-    2、订阅激光里程计（来自MapOptimization），用两帧之间的IMU预计分量构建因子图，优化当前帧位姿（这个位姿仅用于更新每时刻的IMU里程计，以及下一次因子图优化）。     
-
-发布：
-    1、发布imu里程计；
-**************************************************/ 
 #include "lio/utility.h"
-//@yjf
 #include "dlio_loc/state_info.h"
-
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -503,9 +471,7 @@ public:
         prevBias_  = result.at<gtsam::imuBias::ConstantBias>(B(key));
 
         //@yjf
-        // gtsam加速度偏置
         gtsam::Vector3 accelBias = prevBias_.accelerometer();
-        // gtsam陀螺仪
         gtsam::Vector3 gyroBias = prevBias_.gyroscope();
         // 将gtsam的位置信息转换为geometry_msgs的位置消息
         state_info.pose.pose.position.x = prevState_.position().x();
@@ -513,7 +479,6 @@ public:
         state_info.pose.pose.position.z = prevState_.position().z();
 
         // 将gtsam的方向转为四元数
-        // gtsam::Quaternion quat = prevPose_.rotation().toQuaternion();
         state_info.pose.pose.orientation.w = prevState_.quaternion().w();
         state_info.pose.pose.orientation.x = prevState_.quaternion().x();
         state_info.pose.pose.orientation.y = prevState_.quaternion().y();

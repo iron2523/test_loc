@@ -1,31 +1,8 @@
 #include <dlio/odom.h>
 #include <dlio_loc/state_info.h>
 
-// @yjf
-// trans livoxmsg 
-// void dlio::OdomNode::moveFromCustomMsgCallback(const livox_ros_driver::CustomMsgConstPtr &msg) {
-//     pcl::PointCloud<pcl::PointXYZI> pclcloud;
-//     pcl::PointXYZI point;
-//     // pcl::PointXYZI point_livox;
-//     pclcloud.header.frame_id = msg->header.frame_id;
-//     pclcloud.header.stamp = msg->header.stamp.toSec();
-//     pclcloud.header.seq = msg->header.seq;
-//     pclcloud.width = msg->point_num;
-//     for (uint i = 0; i < msg->point_num -1; i++) {
-//         point.x = msg->points[i].x;
-//         point.y = msg->points[i].y;
-//         point.z = msg->points[i].z;
-//         point.intensity = msg->points[i].reflectivity;
-//         pclcloud.push_back(point);
-//     }
-//     sensor_msgs::PointCloud2Ptr pc2_cloud(new sensor_msgs::PointCloud2());
-//     pcl::toROSMsg(pclcloud, *pc2_cloud);
-//     pub_pc2.publish(pc2_cloud);
-// }
-
 void dlio::OdomNode::initialPoseReceived(geometry_msgs::PoseWithCovarianceStampedPtr msg) {
     ROS_INFO("initialPoseRecdived");
-    // if (msg->header.frame_id != this->global_frame_id_) {
     if ("map_1" != this->global_frame_id_) {
         ROS_WARN("initialpose_frame_id does not match global_frame_id");
         return;
@@ -88,7 +65,6 @@ void dlio::OdomNode::odomReceived(nav_msgs::Odometry::ConstPtr msg) {
     }
     ROS_INFO("odomReceived");
     double current_odom_received_time =
-    // msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9;
     msg->header.stamp.sec + msg->header.stamp.nsec * 1e-9;
     double dt_odom = current_odom_received_time - last_odom_received_time_;
     last_odom_received_time_ = current_odom_received_time;
@@ -136,54 +112,6 @@ void dlio::OdomNode::odomReceived(nav_msgs::Odometry::ConstPtr msg) {
 void dlio::OdomNode::lioReceived(nav_msgs::Odometry odometry) {
     // 接收位置信息
     std::lock_guard<std::mutex> lock(this->geo.mtx);
-    // Eigen::Vector3f pin(odometry.pose.pose.position.x, odometry.pose.pose.position.y, odometry.pose.pose.position.z);
-    // Eigen::Quaternionf qin(odometry.pose.pose.orientation.w, odometry.pose.pose.orientation.x, odometry.pose.pose.orientation.y, odometry.pose.pose.orientation.z);
-    // double dt = 0.01;
-
-    // Eigen::Quaternionf qe, qhat, qcorr;
-    // qhat = this->state.q;
-
-    // // Constuct error quaternion
-    // qe = qhat.conjugate() * qin;
-
-    // double sgn = 1.;
-    // if (qe.w() < 0) {
-    //   sgn = -1;
-    // }
-
-    // // Construct quaternion correction
-    // qcorr.w() = 1 - abs(qe.w());
-    // qcorr.vec() = sgn * qe.vec();
-    // qcorr = qhat * qcorr;
-
-    // Eigen::Vector3f err = pin - this->state.p;
-    // Eigen::Vector3f err_body;
-
-    // err_body = qhat.conjugate()._transformVector(err);
-
-    // double abias_max = this->geo_abias_max_;
-    // double gbias_max = this->geo_gbias_max_;
-    // //yyyjf new callback func
-    // // Update accel bias
-    // this->state.b.accel -= dt * this->geo_Kab_ * err_body;
-    // this->state.b.accel = this->state.b.accel.array().min(abias_max).max(-abias_max);
-
-    // // Update gyro bias
-    // this->state.b.gyro[0] -= dt * this->geo_Kgb_ * qe.w() * qe.x();
-    // this->state.b.gyro[1] -= dt * this->geo_Kgb_ * qe.w() * qe.y();
-    // this->state.b.gyro[2] -= dt * this->geo_Kgb_ * qe.w() * qe.z();
-    // this->state.b.gyro = this->state.b.gyro.array().min(gbias_max).max(-gbias_max);
-
-    // // Update state
-    // this->state.p += dt * this->geo_Kp_ * err;
-    // this->state.v.lin.w += dt * this->geo_Kv_ * err;
-    // this->state.q.w() += dt * this->geo_Kq_ * qcorr.w();
-    // this->state.q.x() += dt * this->geo_Kq_ * qcorr.x();
-    // this->state.q.y() += dt * this->geo_Kq_ * qcorr.y();
-    // this->state.q.z() += dt * this->geo_Kq_ * qcorr.z();
-    // this->state.q.normalize();
-
-
 
     this->state.p[0] = odometry.pose.pose.position.x;
     this->state.p[1] = odometry.pose.pose.position.y;
@@ -200,17 +128,6 @@ void dlio::OdomNode::lioReceived(nav_msgs::Odometry odometry) {
     this->state.v.lin.w[0] = odometry.twist.twist.linear.x;
     this->state.v.lin.w[1] = odometry.twist.twist.linear.y;
     this->state.v.lin.w[2] = odometry.twist.twist.linear.z;
-    
-
-    
-    // 接收IMU偏置信息
-    // this->state.b.gyro[0] = lio_state->gyro_bias.x;
-    // this->state.b.gyro[1] = lio_state->gyro_bias.y;
-    // this->state.b.gyro[2] = lio_state->gyro_bias.z;
-    
-    // this->state.b.accel[0] = lio_state->accel_bias.x;
-    // this->state.b.accel[1] = lio_state->accel_bias.y;
-    // this->state.b.accel[2] = lio_state->accel_bias.z;
     this->geo.prev_p = this->state.p;
     this->geo.prev_q = this->state.q;
     this->geo.prev_vel = this->state.v.lin.w;
@@ -223,7 +140,6 @@ void dlio::OdomNode::imuReceived(sensor_msgs::Imu::ConstPtr msg) {
     //转换IMU数据
     sensor_msgs::Imu::Ptr imu = transformImu(msg);
     imu_stamp = imu->header.stamp;
-    // double imu_stamp_secs = rclcpp::Time(imu->header.stamp).seconds();
     double imu_stamp_secs = imu->header.stamp.toSec();
 
     Eigen::Vector3f lin_accel;
@@ -255,7 +171,6 @@ void dlio::OdomNode::imuReceived(sensor_msgs::Imu::ConstPtr msg) {
 
         if ((imu_stamp_secs - this->first_imu_stamp) < this->imu_calib_time_) {
             num_samples++;
-            // std::cout << std::endl << " seconds... ";
             gyro_avg[0] += ang_vel[0];
             gyro_avg[1] += ang_vel[1];
             gyro_avg[2] += ang_vel[2];
@@ -310,12 +225,9 @@ void dlio::OdomNode::imuReceived(sensor_msgs::Imu::ConstPtr msg) {
         if (dt == 0) {
             dt = 1.0 / 200.0;
       }
-        // this->imu_rates.push_back(1. / dt);
-
         // Apply the calibrated bias to the new IMU measurements
         this->imu_meas.stamp = imu_stamp_secs;
         this->imu_meas.dt = dt;
-        // RCLCPP_INFO(get_logger, "   imu dt is : %.8f", dt);
         this->prev_imu_stamp = this->imu_meas.stamp;
 
         //加速度计校准
@@ -328,19 +240,16 @@ void dlio::OdomNode::imuReceived(sensor_msgs::Imu::ConstPtr msg) {
         this->imu_meas.ang_vel = ang_vel_corrected;
 
         // Store calibrated IMU measurements into imu buffer for manual integration
-        // later. std::cout << "imu_buffer->push_front a imu mess" << std::endl;
         this->mtx_imu.lock();
         this->imu_buffer.push_front(this->imu_meas);
-        // std::cout << "****imu_buffer size:" << imu_buffer.size() << std::endl;
+
         this->mtx_imu.unlock();
 
         // Notify the callbackPointCloud thread that IMU data exists for this time
         this->cv_imu_stamp.notify_one();
-        // RCLCPP_INFO(get_logger(), "notify the imu waiter...");
 
         //可以改成位姿是否初始化完成
         if (this->geo.first_opt_done) {
-          // Geometric Observer: Propagate State
           //使用每祯IMU更新状态
           this->propagateState();
         }
@@ -383,6 +292,10 @@ void dlio::OdomNode::publishGicpPose() {
 
 // 发布state 机器人位置
 void dlio::OdomNode::publishPoseThread() {
+    if (!this->first_valid_scan) {
+        return;
+    }
+
     geometry_msgs::PoseWithCovarianceStamped pose_msg;
     geometry_msgs::Quaternion quat_msg;
     {
@@ -401,22 +314,6 @@ void dlio::OdomNode::publishPoseThread() {
     pose.y = pose_msg.pose.pose.position.y;
     pose.theta = tf2::getYaw(pose_msg.pose.pose.orientation);
     savePoseToServer(pose); 
-    // broadcaster
-
-    // geometry_msgs::TransformStamped transform_stamped_odom_to_map;
-    // tf2::Quaternion q;
-    // q.setRPY(0, 0, 0);
-    // transform_stamped_odom_to_map.header.stamp = this->imu_stamp;
-    // transform_stamped_odom_to_map.header.frame_id = global_frame_id_;
-    // transform_stamped_odom_to_map.child_frame_id = odom_frame_id_;
-    // transform_stamped_odom_to_map.transform.translation.x = 0.0;
-    // transform_stamped_odom_to_map.transform.translation.y = 0.0;
-    // transform_stamped_odom_to_map.transform.translation.z = 0.0;
-    // transform_stamped_odom_to_map.transform.rotation.x = q.x();
-    // transform_stamped_odom_to_map.transform.rotation.y = q.y();
-    // transform_stamped_odom_to_map.transform.rotation.y = q.y();
-    // transform_stamped_odom_to_map.transform.rotation.w = 1;
-    // this->broadcaster_odom_to_map.sendTransform(transform_stamped_odom_to_map);
 
     geometry_msgs::TransformStamped transform_stamped_base_link_to_map;
     transform_stamped_base_link_to_map.header.stamp = this->imu_stamp;
@@ -427,26 +324,14 @@ void dlio::OdomNode::publishPoseThread() {
     transform_stamped_base_link_to_map.transform.translation.z = pose_msg.pose.pose.position.z;
     transform_stamped_base_link_to_map.transform.rotation = quat_msg;
     this->broadcaster_.sendTransform(transform_stamped_base_link_to_map);
-
-    // geometry_msgs::TransformStamped transform_stamped_base_link_to_odom;
-    // transform_stamped_base_link_to_odom.header.stamp = this->imu_stamp;
-    // transform_stamped_base_link_to_odom.header.frame_id = odom_frame_id_;
-    // transform_stamped_base_link_to_odom.child_frame_id = base_frame_id_;
-    // transform_stamped_base_link_to_odom.transform.translation.x = pose_msg.pose.pose.position.x;
-    // transform_stamped_base_link_to_odom.transform.translation.y = pose_msg.pose.pose.position.y;
-    // transform_stamped_base_link_to_odom.transform.translation.z = pose_msg.pose.pose.position.z;
-    // transform_stamped_base_link_to_odom.transform.rotation = quat_msg;
-    // this->broadcaster_base_to_odom.sendTransform(transform_stamped_base_link_to_odom);
-    //  pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, pose_msg.pose.pose.position.z);
 }
 
 void dlio::OdomNode::cloudData(sensor_msgs::PointCloud2ConstPtr msg) {
     latest_cloud_msg_ = msg;
-    if (msg = nullptr) {
+    if (msg == nullptr) {
         ROS_INFO("no data!!!");
-    } else {
-        // ROS_INFO("pc2");
-    }
+        return;
+    } 
 }
 
 void dlio::OdomNode::timerCallbackCloud(const ros::WallTimerEvent&) {
@@ -509,22 +394,18 @@ void dlio::OdomNode::cloudReceived(sensor_msgs::PointCloud2ConstPtr msg) {
     }
     //初始化第一帧雷达时间
     if (this->prev_scan_stamp == 0.) {
-        // this->prev_scan_stamp = rclcpp::Time(msg->header.stamp).seconds();
         this->prev_scan_stamp = msg->header.stamp.toSec();
         //需要直接返回，保证后续的dt为非零值
         return;
     }
     //第一帧有效雷达时间
     if (this->first_scan_stamp == 0.) {
-        // this->first_scan_stamp = rclcpp::Time(msg->header.stamp).seconds();
         this->first_scan_stamp = msg->header.stamp.toSec();
     }
-    // rclcpp::Time start = this->now();    
     this->getScanFromROS(msg);
     //畸变补偿
     this->deskewPointcloud();
     if (scan_dt < 1e-6) {
-        // RCLCPP_ERROR(get_logger(), "scan dt is invalid: %f", scan_dt);
         ROS_ERROR("scan dt is invalid: %f", scan_dt);
         return;
     }
@@ -542,15 +423,7 @@ void dlio::OdomNode::cloudReceived(sensor_msgs::PointCloud2ConstPtr msg) {
     if (!this->first_valid_scan) {
         return;
     }   
-    // hv::async(std::bind(&OdomNode::computeMetrics, this));
     this->setInputSource();
     this->getNextPose();
-    // RCLCPP_INFO_STREAM(get_logger(), "pose matrix carried out: \n " <<
-    // to_string_with_precision(this->T));  
-    // Update time stamps
-    // this->lidar_rates.push_back(1. / (this->scan_stamp -
-    // this->prev_scan_stamp));
     this->prev_scan_stamp = this->scan_stamp;
-
-    // ROS_INFO("Finish a CloudReceived...");
 }
