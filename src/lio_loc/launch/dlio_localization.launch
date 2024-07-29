@@ -10,6 +10,7 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="map_1_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 map map_1" output = "screen"/>
   <node pkg="tf2_ros" type="static_transform_publisher" name="map_2_tf" args="0.0 0.0 0.0 0.0 0.0 0.0 map map_2" output = "screen"/>
   <node name="dlio_loc" pkg="dlio_loc" type="dlio_odom_node" output="screen">
+    <!-- <remap from="cloud" to="velodyne_points_0"/> -->
     <remap from="cloud" to="rslidar_points"/>
     <remap from="imu" to="imu/data"/>
     <rosparam file="$(find dlio_loc)/param/localization.yaml" command="load"/>
